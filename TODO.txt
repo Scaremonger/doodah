@@ -1,0 +1,12 @@
+BUGS:
+Cannot create service file unless sudo....
+
+IMPROVEMENTS
+* Get version number from setup file instead of hard coding
+
+THINGS TO DO:
+* finish:
+    enable, disable
+    start, stop, restart, status
+    help
+    (run python)
