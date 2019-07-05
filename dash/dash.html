@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>DASHBOARD</title>
+<link rel="stylesheet" type="text/css" href="dash.css">
+<style>
+.test {
+	border:#ff0000 thin dotted;
+	display:inline-block;
+	margin:4px;
+	padding:4px;
+	overflow:hidden;
+	position:fixed;
+}
+.two {
+	top:0;
+	left:120px;
+}
+.skin {
+}
+.m {
+	border:#ff0000 thin dotted;
+	display:inline-block;
+	/* Remove gap below element */
+	vertical-align:top;
+	left:110px;
+	position:absolute;
+}
+</style>
+<script>
+<!-- Javascript array pre-filled by Server at refresh -->
+var preload={
+skin1:{
+	windowx:100,
+	windowy:100,
+	doodah:{
+		name:"this",
+		backgroundmode:2,
+		solidcolor:E59866  
+		},
+	metadata:{
+		author:"Si Dunford",
+		version:"1.0"},
+	clock:{
+		meter:"string",
+		x:'100',
+		y:'100'
+		},
+	textMeter:{
+		meter:"string",
+		x:'0r',
+		y:'0R',
+		padding:{left:5,top:10,right:25,bottom:0}
+		},
+},
+skin2:{
+	doodah:{name:"that"},
+	metadata:{
+		author:"Si Dunford",
+		version:"1.0"
+	},
+	textMeter:{
+		meter:"string",
+		x:'0r',
+		y:'0R',
+		padding:{left:5,top:10,right:25,bottom:0}
+	},
+	textMeasure:{
+		measure:"text"
+	}
+},
+skin3:{
+	doodah:{name:"another"},
+	metadata:{
+		author:"Si Dunford",
+		version:"1.0"},
+	another:{
+		meter:"string",
+		x:'0R',
+		y:'0r'
+		},
+	textMeasure:{
+		measure:"text"
+		}
+	}
+}
+</script>
+<script src="dash.js"></script>
+</head>
+<body>
+
+<div class='test' style='width:150px;height:33px;'>
+<div class='m'>
+Anyway
+<!-- Don;t add CRLF between elements or you'll get a gap! -->
+</div><div class='m'>
+C
+</div></div>
+<div class='test two' style='width:150px;height:33px;'>
+<div class='m'>
+Anyway
+<!-- Don;t add CRLF between elements or you'll get a gap! -->
+</div><div class='m'>
+C
+</div></div>
+</body>
+</html>
