@@ -206,6 +206,22 @@ function ExtractPosition( str ){
 	if( !found[2]) found[2]='';
 	if(found) return [parseInt(found[1]),found[2]];
 }
+function ExtractPadding( definition, variable ){
+    var err = {left:0,top:0,right:0,bottom:0};
+    if( !definition||!definition[variable] ) return err;
+    var str = definition[variable].toString();
+    var item = str.split(",");
+    //console.log( "Padding="+item.length);
+    if(item.length!=4) return err;
+    return {left:parseInt(item[0]),
+            top:parseInt(item[1]),
+            right:parseInt(item[2]),
+            bottom:parseInt(item[3])};
+}
+function ExtractText( definition, variable, otherwise ){
+	if(definition&&definition[variable]) return definition[variable];
+    return otherwise;
+}
 
 /* FUNCTION TESTING
 console.log( ExtractPosition( "25R" ) );
@@ -218,8 +234,16 @@ console.log( JSON.stringify( ExtractPadding( "0,1,2,3") ));
 console.log( JSON.stringify( ExtractPadding( "A,1,2,3") ));
 console.log( JSON.stringify( ExtractPadding( "0,B,2,3") ));
 console.log( JSON.stringify( ExtractPadding( "0,2") ));
+console.log( JSON.stringify( 
+    ExtractPadding( { padding:'1,2,3,4' }, "padding" )
+    ));
+console.log( JSON.stringify( 
+    ExtractPadding( { X:100 }, "padding" )
+    ));
+console.log( JSON.stringify( 
+    ExtractPadding( { padding:10 }, "padding" )
+    ));
 */
-
 
 class Meter {
 	constructor( skin, name, definition, child='div' ){
@@ -238,6 +262,7 @@ class Meter {
 		this.config.y = ExtractPosition( definition[name].y||0 );
 		this.config.w = ExtractPosition( definition[name].w||0 );
 		this.config.h = ExtractPosition( definition[name].h||0 );
+		this.config.text = ExtractText( definition[name], 'text', '' );
         
         // Calculated position and size:
         this.xpos = 0;
@@ -245,12 +270,14 @@ class Meter {
         this.width = 0;
         this.height = 0;
 		//
-		this.config.padding = definition[name].padding;
-		if(!this.padding) this.padding={top:0,left:0,right:0,bottom:0};
-		console.log( ".padding="+ definition[name].padding);
-		console.log( ".padding="+ JSON.stringify(this.padding));
+        this.config.padding = ExtractPadding( definition[name], 'padding' );
+        //{left:5,top:10,right:25,bottom:0}
+//		this.config.padding = definition[name].padding;
+//		if(!this.padding) this.padding={top:0,left:0,right:0,bottom:0};
+		//console.log( ".padding="+ definition[name].padding);
+		console.log( ".padding="+ JSON.stringify(this.config.padding));
 				
-		document.body.appendChild(skin.dom);
+		skin.dom.appendChild(this.dom);
         
         this.update();
         this.redraw()
@@ -268,7 +295,7 @@ class Meter {
     // Update the meter (With new value if required)
     // This is called by timer
 	update(){
-        this.dom.innerText="###"+name+"###";
+        this.dom.innerText="###"+this.name+"###";
     }
     // Recalculate component location and size
     redraw(){
@@ -309,8 +336,10 @@ class Meter {
 		} else {
 			console.log( ".Using parent");
 			// First item drawn is relative to skin!
-			this.xpos = this.skin.config.windowx+this.config.x[0];
-			this.ypos = this.skin.config.windowy+this.config.y[0];
+			//this.xpos = this.skin.config.windowx+this.config.x[0];
+			//this.ypos = this.skin.config.windowy+this.config.y[0];
+			this.xpos = this.config.x[0];
+			this.ypos = this.config.y[0];
 		}
 		console.log( ".X="+this.xpos+" ("+this.config.x+")" );
 		console.log( ".Y="+this.ypos+" ("+this.config.y+")" );
@@ -322,18 +351,18 @@ class Meter {
         // Get size including padding...
 		this.width = this.dom.clientWidth;
 		this.height = this.dom.clientHeight;
-		this.width += this.padding.left+this.padding.right;
-		this.height += this.padding.top+this.padding.bottom; 
+		this.width += this.config.padding.left+this.config.padding.right;
+		this.height += this.config.padding.top+this.config.padding.bottom; 
         
         // Save the location into previous
 		previous = {x:this.xpos,y:this.ypos,w:this.width||0,h:this.height||0};
 		// UPdate DOM
 		this.dom.style.left = this.xpos+"px";
 		this.dom.style.top = this.ypos+"px";
-		this.dom.style.paddingTop = this.padding.top+"px";
-		this.dom.style.paddingRight = this.padding.right+"px";
-		this.dom.style.paddingBottom = this.padding.bottom+"px";
-		this.dom.style.paddingLeft = this.padding.left+"px";
+		this.dom.style.paddingTop = this.config.padding.top+"px";
+		this.dom.style.paddingRight = this.config.padding.right+"px";
+		this.dom.style.paddingBottom = this.config.padding.bottom+"px";
+		this.dom.style.paddingLeft = this.config.padding.left+"px";
 	}
 }
 class Meter_String extends Meter {
@@ -346,6 +375,10 @@ class Meter_String extends Meter {
 		//console.log("-> h="+this.dom.clientHeight);
 
 	}
+	update(){
+        //this.dom.innerText="###"+name+"###";
+        this.dom.innerText=this.config.text;
+    }
 }
 class Meter_Image extends Meter {
 	constructor(){
