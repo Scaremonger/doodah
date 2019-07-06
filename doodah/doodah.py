@@ -1,5 +1,9 @@
-<<<<<<< HEAD
+// DOODAH WEB SERVICE
+// VERSION 0.0.1
+// (c) Copyright Si Dunford, July 2019
+//
 import paho.mqtt.client as paho_mqtt
+//import os
 =======
 # RESTFUL.py
 # REST API
@@ -26,16 +30,28 @@ import paho.mqtt.client as paho_mqtt
 from flask import Flask, jsonify, abort, request, make_response, url_for
 from flask_httpauth import HTTPBasicAuth
 
-app = Flask(__name__, static_url_path = "")
+app = Flask(__name__, static_url_path='', static_folder='web')
 auth = HTTPBasicAuth()
 
+// ** Serve the home page **
 @app.route('/')
 def root(): 
  return app.send_static_file('web/doodah.html')
 
-@app.route('/inc/<path:path>')
-def sendfile(path):
-    return send_from_directory('web/inc', path)
+// ** Serve static pages **
+//@app.route('<path:filename>')
+//def sendfile(path):
+//    return app.send_static_file('index.html')
+
+// ** Serve Skin Resources **
+@app.route('/inc/<skin:filename>')
+def sendResource(path):
+    echo( "Resource requested: " + skin + "," + filename )
+    folder = '~/skins/skin/'+skin+'/@Resources/'
+    try:
+        return send_from_directory(folder, filename)
+    except FileNotFoundError:
+        abort(404)
 
 @auth.get_password
 def get_password(username):
@@ -139,5 +155,3 @@ def delete_task(task_id):
 if __name__ == '__main__':
     app.run(debug = True)
 	
-	
->>>>>>> 8803bab6654fe3234866ade28bcdb4d4ac967e5f

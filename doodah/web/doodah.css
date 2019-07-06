@@ -1,0 +1,31 @@
+/* Doodah Default Stylesheet */
+
+* {
+margin:0;
+padding:0;
+}
+
+.debug {
+	border:#ff0000 thin dotted;
+}
+.skin {
+	border:#ff0000 thin dotted;
+    display:inline-block;
+	position:fixed;
+	overflow:hidden;    
+}
+.meter {
+	border:#00ff00 thin dotted;
+    position:absolute;
+	overflow:auto;
+	display:inline-block;
+	
+}
+.meterString {
+    /* Remove gap below element */
+	vertical-align:top;
+}
+
+.hidden{
+    visibility: hidden;
+}

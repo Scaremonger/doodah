@@ -25,7 +25,7 @@ Preload functions:
 	* ExtractPosition( definition, key, default )	- DONE
 	* ExtractColor( definition, key, default )		- RRR,GGG,BBB[,AAA] / RRGGBB[AA] etc
 	* ExtractPadding( definition, key, default )	- l,t,r,b (NOTE DIFFERENCE WITH CSS)
-	
+
 doodah.ini should have a section for each "loaded" skin 
 [See "Reference|Settings|[Skin] Sections" in rainmeter documentation
 This "LIST" of sections should be used to create preload array.
@@ -70,9 +70,7 @@ Is there one to SetWallpaper? If so, this must set the body background image.
 BUGS
 ===========
 * in Preload: padding should be four comma seperated numbers. Not object array
-* skin is 1px square because content is fixed instead of absolute
-* SKIN size must be defined or calculated depending on settings
-* METER size must be calculated.
+* when skinsize is not defined it is -1. It should be calculated.
 
 CHANGES:
 ===========
@@ -92,44 +90,41 @@ var AllMeters = {};	// List of all meters
 var previous = undefined;
 
 class Skin {
-	constructor( name, definition ){
+	constructor( name, definition, parent ){
 		console.log( "# Creating skin for %s",name );
 		// Add self to Skin list
 		Skins[name] = this;
 		//
 		this.name = name;
-		//
+        
+		// Set initial variable values:
+        this.config = {};
+		this.config.windowx = ExtractNumber( definition, 'windowx', 0 );
+		this.config.windowy = ExtractNumber( definition, 'windowy', 0 );
+		this.config.update = ExtractNumber( definition['doodah'], 'update', 1000 );
+		this.config.dynamicwindowsize = ExtractNumber( definition.doodah, 'dynamicwindowsize', 0 );
+		this.config.skinwidth = ExtractNumber( definition.doodah, 'skinwidth', -1 );
+		this.config.skinheight = ExtractNumber( definition.doodah, 'skinheight', -1 );
+
+        // CREATE DOM OBJECT (DIV) FOR SKIN
+        //console.log( "'%s' pos:",name );
+        //console.log( " X: %s",this.config.windowx );
+        //console.log( " Y: %s",this.config.windowy );
+        //console.log( " W: %s",this.config.skinwidth );
+        //console.log( " H: %s",this.config.skinheight );
 		this.dom = document.createElement('div');
 		this.dom.setAttribute("id", "skin."+this.name);
 		this.dom.className='skin';
+        this.dom.style.left = this.config.windowx+"px";
+		this.dom.style.top = this.config.windowy+"px";
 		document.body.appendChild(this.dom);
-		// Variables that can be changed by actions
-		this.variables = {windowx:0,windowy:0};
-		// Set initial variable values:
-		this.variables.windowx = ExtractNumber( definition, 'windowx', 0 );
-		this.variables.windowy = ExtractNumber( definition, 'windowy', 0 );
+        
 		//
 		this.Meters = {};
 		this.Measures = {};
 		this.Variables = {};
 		this.Meta = {};
-		// Skin Properties
-		this.doodah = {update:1000,dynamicwindowsize:1,skinwidth:-1,skinheight:-1};
-		this.updateTime=1000;
-		this.dynamicwindowsize=0;
-		this.xpos=0;
-		this.ypos=0;
-		this.width = undefined;
-		this.height = undefined;
-		// Extract variables from definition
-		if(definition["doodah"]){
-			this.doodah.update = parseInt(definition.doodah.update||1000);
-			this.doodah.dynamicwindowsize = parseInt(definition.doodah.dynamicwindowsize||1);
-			this.doodah.skinwidth = parseInt(definition.doodah.skinwidth);
-			this.doodah.skinheight = parseInt(definition.doodah.skinheight);
-		}
-		
-		
+	
 		// Loop through skin sections
 		for (var section in definition) {
 			//console.log("SECTION: %s",section);
@@ -138,9 +133,10 @@ class Skin {
 				this.Meta = definition[section];
 				continue;
 			}
+			if( section=='variables' ) continue;
 			// Is section a METER?
 			if( definition[section].meter ) {
-				console.log("#"+definition[section].meter);
+				console.log("Meter '"+section+"': "+definition[section].meter);
 				var metertype = definition[section].meter;
 				switch( metertype ){
 				case 'string':
@@ -155,28 +151,34 @@ class Skin {
 				}
 			}
 			// Is section a MEASURE?
-		}		
-/*
-		foreach definition as def {
-			if(['doodah','metadata'].indexOf(def)==0){
-				section = definition[def];
-				if( section.meter ) {
-					switch( section.meter ){
-					case 'text':
-						skin.meters += new Meter_text( section );
-						break;
-					case 'image':
-						skin.meters += new Meter_Image( section );
-						break;
-					default:
-						echo( "Meter type '"+section.meter+"' is unsupported." );
-					}
-				} else if( section.measure ){
-					
+			if( definition[section].measure ) {
+				console.log("Measure '"+section+"': "+definition[section].measure);
+				var measuretype = definition[section].measure;
+				switch( measuretype ){
+				case 'calc':
+					console.log("Creating calc measure");
+					// Add a new Measure to the list
+					//var measure = new Measure_Calc( this, section, definition );
+					//this.Measures[section] = measure;
+					//AllMeasures[name+"."+section]=measure;
+					break;
+				default:
+					console.log("# Unknown measure type "+measuretype);
 				}
 			}
-		}
-*/
+		}		
+
+		// Initial size of skin is based on meters:
+		if( this.config.skinwidth==-1){
+            this.config.skinwidth = 50;
+        }
+		if( this.config.skinheight==-1){
+            this.config.skinheight = 50;
+        }
+        // Update DOM size
+        this.dom.style.width = this.config.skinwidth+"px";
+        this.dom.style.height = this.config.skinheight+"px";
+        
 		// Start Self-timer
 //		this.timer = setInterval( function(){
 //			console.log("tick, "+this.name);
@@ -186,7 +188,7 @@ class Skin {
 }
 
 function ExtractNumber( definition, variable, otherwise ){
-	if(definition&&definition[variable]) return parseInt(definition[vaiable]);
+	if(definition&&definition[variable]) return parseInt(definition[variable]);
 	return parseInt( otherwise );
 }
 
@@ -221,7 +223,7 @@ console.log( JSON.stringify( ExtractPadding( "0,2") ));
 
 class Meter {
 	constructor( skin, name, definition, child='div' ){
-		console.log( ".meter="+ JSON.stringify(definition[name]));
+		console.log( "CREATE METER: "+ JSON.stringify(definition[name]));
 		this.skin = skin;
 		this.name = name;
 		// Create DOM element
@@ -230,29 +232,46 @@ class Meter {
 		this.dom.className='meter';
 		//if( visible==0 ) this.div.style.display = "none";
 		
-		this.sx = ExtractPosition( definition[name].x||0 );
-		this.sy = ExtractPosition( definition[name].y||0 );
-		this.sw = ExtractPosition( definition[name].w||0 );
-		this.sh = ExtractPosition( definition[name].h||0 );
+        // Extract config properties:
+        this.config = {};
+		this.config.x = ExtractPosition( definition[name].x||0 );
+		this.config.y = ExtractPosition( definition[name].y||0 );
+		this.config.w = ExtractPosition( definition[name].w||0 );
+		this.config.h = ExtractPosition( definition[name].h||0 );
+        
+        // Calculated position and size:
+        this.xpos = 0;
+        this.ypos = 0;
+        this.width = 0;
+        this.height = 0;
 		//
-		this.padding = definition[name].padding;
+		this.config.padding = definition[name].padding;
 		if(!this.padding) this.padding={top:0,left:0,right:0,bottom:0};
 		console.log( ".padding="+ definition[name].padding);
 		console.log( ".padding="+ JSON.stringify(this.padding));
-		/*
-		console.log( ".sx="+ JSON.stringify(this.sx));
-		console.log( ".sy="+ JSON.stringify(this.sy));
-		console.log( ".sw="+ JSON.stringify(this.sw));
-		console.log( ".sh="+ JSON.stringify(this.sh));
-		*/
+				
 		document.body.appendChild(skin.dom);
-		// this.definition = definition;
+        
+        this.update();
+        this.redraw()
+
+		console.log( "Meter %s pos:",name );
+		console.log( " X="+ JSON.stringify(this.config.x));
+		console.log( " Y="+ JSON.stringify(this.config.y));
+		console.log( " W="+ JSON.stringify(this.config.w));
+		console.log( " H="+ JSON.stringify(this.config.h));
+// this.definition = definition;
 		//this.dom = this.create();
 		//this.period = 1000;
 		//if(this.prop < 10) setTimeout(this.update.bind(this), this.period);
 	}
-
+    // Update the meter (With new value if required)
+    // This is called by timer
 	update(){
+        this.dom.innerText="###"+name+"###";
+    }
+    // Recalculate component location and size
+    redraw(){
 		console.log( "Calc pos of '%s'.",this.name);
 		/*
 		console.log( ".sx="+ JSON.stringify(this.sx));
@@ -264,43 +283,51 @@ class Meter {
 		if( previous) {
 			console.log( ".Using previous "+ JSON.stringify(previous));
 			// Draw relative to previous
-			switch( this.sx[1] ){
+			switch( this.config.x[1] ){
 			case 'r':	//Relative to left of previous
-				this.xpos = previous.x+this.sx[0];			
+				this.xpos = previous.x+this.config.x[0];			
 				break;
 			case 'R':	//Relative to right of previous
-				this.xpos = previous.x+previous.w+this.sx[0];
+				this.xpos = previous.x+previous.w+this.config.x[0];
 				break;
 			default:
-				this.xpos = this.skin.xpos+this.sx[0];
+				this.xpos = this.skin.config.windowx+this.config.x[0];
 			};
-			//console.log( ". X="+this.xpos+","+this.sx );
-			switch( this.sy[1]){
+			//console.log( ". X="+this.xpos+","+this.config.x );
+			switch( this.config.y[1]){
 			case 'r':	//Relative to left of previous
-				this.ypos = previous.y+this.sy[0];			
+				this.ypos = previous.y+this.config.y[0];			
 				break;
 			case 'R':	//Relative to right of previous
-				this.ypos = previous.y+previous.h+this.sy[0];
+				this.ypos = previous.y+previous.h+this.config.y[0];
 				break;
 			default:
-				this.ypos = this.skin.ypos+this.sy[0];
+				this.ypos = this.skin.config.windowy+this.config.y[0];
 			}
 //			this.width = 10;
 //			this.height = 10;
 		} else {
 			console.log( ".Using parent");
 			// First item drawn is relative to skin!
-			this.xpos = this.skin.xpos+this.sx[0];
-			this.ypos = this.skin.ypos+this.sy[0];
+			this.xpos = this.skin.config.windowx+this.config.x[0];
+			this.ypos = this.skin.config.windowy+this.config.y[0];
 		}
-		console.log( ".X="+this.xpos+","+this.sx );
-		console.log( ".Y="+this.ypos+","+this.sy );
-		console.log( ".W="+this.width+","+this.sw );
-		console.log( ".H="+this.height+","+this.sh );
+		console.log( ".X="+this.xpos+" ("+this.config.x+")" );
+		console.log( ".Y="+this.ypos+" ("+this.config.y+")" );
+		console.log( ".W="+this.width+" ("+this.config.w+")" );
+		console.log( ".H="+this.height+" ("+this.config.h+")" );
 //		this.width = this.sw[0];
 //		this.height = this.sh[0];
+        
+        // Get size including padding...
+		this.width = this.dom.clientWidth;
+		this.height = this.dom.clientHeight;
+		this.width += this.padding.left+this.padding.right;
+		this.height += this.padding.top+this.padding.bottom; 
+        
+        // Save the location into previous
 		previous = {x:this.xpos,y:this.ypos,w:this.width||0,h:this.height||0};
-		//
+		// UPdate DOM
 		this.dom.style.left = this.xpos+"px";
 		this.dom.style.top = this.ypos+"px";
 		this.dom.style.paddingTop = this.padding.top+"px";
@@ -313,18 +340,11 @@ class Meter_String extends Meter {
 	constructor( parent, name, definition ){
 		super( parent, name, definition );
 //		this.prop = 0;
-		this.dom.innerText="###"+name+"###";
-		// Get size including padding...
-		this.width = this.dom.clientWidth;
-		this.height = this.dom.clientHeight;
-		this.width += this.padding.left+this.padding.right;
-		this.height += this.padding.top+this.padding.bottom;
+		
+
 		//console.log("-> w="+this.dom.clientWidth);
 		//console.log("-> h="+this.dom.clientHeight);
-		this.update();
-	}
-	create(){
-//		return document.createElement("div");
+
 	}
 }
 class Meter_Image extends Meter {
@@ -401,9 +421,9 @@ class className {
 // Loop through all skins, create them as objects
 window.onload = function(){
 	// Loop through pre-loaded skins and create them
-	for (var key in preload) {
+	for (var key in preload.skins) {
 		if(!(key in Skins)){
-			skin = new Skin( key, preload[key] );
+			skin = new Skin( key, preload.skins[key] );
 		} // Ignore duplicate skins. 
 	}
 }

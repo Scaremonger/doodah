@@ -1,5 +1,7 @@
 BUGS:
 Cannot create service file unless sudo....
+Should copy from somewhere, check we have sudo!
+doodah/bin/doodah.service
 
 IMPROVEMENTS
 * Get version number from setup file instead of hard coding
@@ -10,3 +12,19 @@ THINGS TO DO:
     start, stop, restart, status
     help
     (run python)
+
+NOTES:
+Preload Skin Names must have "/" and "." replaced with underscore
+, this needs a "Slug" function.
+
+doodah.ini / [skin] / 
+    windowx,y can be %, R, B
+    anchorx,y   - Not implemented
+    
+START THE UPDATE CYCLE
+* Update Measures
+    Thsi will give each measure a value
+* Update Meters
+    This will update DOM objects contents and size
+* Update All DOM objects positions 
+    Because they are based on size of previous etc.
