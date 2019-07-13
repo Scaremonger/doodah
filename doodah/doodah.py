@@ -1,10 +1,12 @@
-// DOODAH WEB SERVICE
-// VERSION 0.0.1
-// (c) Copyright Si Dunford, July 2019
-//
+## DOODAH WEB SERVICE
+## VERSION 0.0.1
+## (c) Copyright Si Dunford, July 2019
+##
 import paho.mqtt.client as paho_mqtt
-//import os
-=======
+import os
+import json
+import configparser
+
 # RESTFUL.py
 # REST API
 
@@ -27,51 +29,128 @@ import paho.mqtt.client as paho_mqtt
 # DELETE /api/items/123	Delete an item
 
 #!flask/bin/python
-from flask import Flask, jsonify, abort, request, make_response, url_for
-from flask_httpauth import HTTPBasicAuth
+from flask import Flask, jsonify, abort
+from flask import request, make_response, url_for
+from flask import render_template
+##from flask_httpauth import HTTPBasicAuth
+from pathlib import Path
 
-app = Flask(__name__, static_url_path='', static_folder='web')
-auth = HTTPBasicAuth()
 
-// ** Serve the home page **
+app = Flask(__name__, static_folder='web')
+##auth = HTTPBasicAuth()
+home = str(Path.home())
+
+## Serve the default skin
 @app.route('/')
 def root(): 
- return app.send_static_file('web/doodah.html')
+    #return app.send_static_file('web/doodah.html?')
+    return serve_layout( 'Default' )
 
-// ** Serve static pages **
-//@app.route('<path:filename>')
-//def sendfile(path):
-//    return app.send_static_file('index.html')
+## Serve favicon
+@app.route('/favicon.ico')
+def favicon(): 
+    return app.send_static_file('favicon.ico')
+    ##return serve_page( filename )
 
-// ** Serve Skin Resources **
-@app.route('/inc/<skin:filename>')
-def sendResource(path):
-    echo( "Resource requested: " + skin + "," + filename )
-    folder = '~/skins/skin/'+skin+'/@Resources/'
-    try:
-        return send_from_directory(folder, filename)
-    except FileNotFoundError:
-        abort(404)
+## Serve Doodah Javascript
+@app.route('/js/<path:path>')
+def js(path):
+    return app.send_static_file(path)
+    ##return app.send_from_directory('js', path)
+    ##send_static_file("js/"+path+)
 
-@auth.get_password
+## Serve Doodah Stylesheets
+@app.route('/css/<path:path>')
+def css(path):
+    return app.send_static_file(path)
+
+## Serve optional skins (THIS MUST BE LAST ROUTE)
+## Catches all other submissions
+@app.route('/<path:filename>')
+def specific(filename): 
+    return serve_layout( filename )
+
+## ** Serve static pages **
+##@app.route('<path:filename>')
+##def sendfile(path):
+##    return app.send_static_file('index.html')
+
+
+##@auth.get_password
 def get_password(username):
     if username == 'miguel':
         return 'python'
     return None
 
-@auth.error_handler
+##@auth.error_handler
 def unauthorized():
     return make_response(jsonify( { 'error': 'Unauthorized access' } ), 403)
     # return 403 instead of 401 to prevent browsers from displaying the default auth dialog
     
-@app.errorhandler(400)
-def not_found(error):
-    return make_response(jsonify( { 'error': 'Bad request' } ), 400)
+##@app.errorhandler(400)
+##def not_found(error):
+##    return make_response(jsonify( { 'error': 'Bad request' } ), 400)
 
-@app.errorhandler(404)
-def not_found(error):
-    return make_response(jsonify( { 'error': 'Not found' } ), 404)
+##@app.errorhandler(404)
+##def not_found(error):
+##    return make_response(jsonify( { 'error': 'Not found' } ), 404)
 
+## Serves an individual layout
+def serve_layout( name ):
+    filepath = Path( home+"/doodah/"+name+".ini" )
+    print( "SERVING LAYOUT:", filepath )
+    if not filepath.is_file():
+        abort(404)
+    skins = { 
+        'title':"name",
+        'skins':{'skins':"var thisisatest=1;" }
+    }
+    layout = configparser.ConfigParser()
+    
+    ## Open Layout file
+    layout.read(filepath)
+    
+    ## Parse all sections, importing the skins
+    for section in layout.sections():
+        ## Standardise the path separator
+        section = section.replace("\\","/")
+        ## Open skin
+        print("")
+        print("["+section+"]")
+        print(os.path.split(section))
+        print(os.path.basename(section))
+        print(section.split("/"))
+        skin_path=os.path.split(section)
+        if skin_path[0]==os.path.basename(section):
+            skin_folder=skin_path[0]
+            skin_file=skin_path[0]
+        else:
+            skin_folder=skin_path[0]+"/"+skin_path[1]
+            skin_file=skin_path[1]
+        print( ".Path:"+skin_folder)
+        print( ".File:"+skin_file)
+        skin = Path( home+"/doodah/"+skin_folder+"/"+skin_file+".ini" )
+        print( ".location:"+str(skin))
+        if not skin.is_file():
+            print( "ERROR:",skin,"is not found" )
+        else:
+            config = configparser.ConfigParser()
+            config.read( skin )
+        
+    return render_template('doodah.html', title=name, preload=json.dumps(skins))
+    ## dict = json.loads(input)
+    
+## Serve Skin Resources **
+@app.route('/inc/<path:skin>/<filename>')
+def serve_resource(skin,filename):
+    echo( "Resource requested: " + skin + "," + filename )
+    path = Path( home+"/doodah/"+skin )
+    try:
+        return send_from_directory(path, filename)
+    except FileNotFoundError:
+        abort(404)
+        
+"""    
 tasks = [
     {
         'id': 1,
@@ -96,9 +175,9 @@ def make_public_task(task):
         else:
             new_task[field] = task[field]
     return new_task
-    
+
 @app.route('/todo/api/v1.0/tasks', methods = ['GET'])
-@auth.login_required
+##@auth.login_required
 def get_tasks():
     return jsonify( { 'tasks': map(make_public_task, tasks) } )
 
@@ -151,7 +230,8 @@ def delete_task(task_id):
         abort(404)
     tasks.remove(task[0])
     return jsonify( { 'result': True } )
-    
+"""
+
 if __name__ == '__main__':
     app.run(debug = True)
 	

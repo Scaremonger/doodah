@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>DASHBOARD</title>
-<link rel="stylesheet" type="text/css" href="doodah.css">
+<title>{{title}}</title>
+<link rel="stylesheet" type="text/css" href="css/doodah.css">
+{{styles}}
+{{scripts}}
 <style>
 .one {
 	margin:4px;
@@ -32,6 +34,7 @@
 </style>
 <script>
 <!-- Javascript array pre-filled by Server at refresh -->
+{{preload}}
 var preload={
 skinpath:'~/skins/',
 logging:0,
@@ -122,8 +125,9 @@ skins:{
         }
     }
 }
+
 </script>
-<script src="doodah.js"></script>
+<script src="css/doodah.js"></script>
 </head>
 <body>
 

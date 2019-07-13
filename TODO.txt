@@ -1,8 +1,9 @@
 BUGS:
-Cannot create service file unless sudo....
-Should copy from somewhere, check we have sudo!
-doodah/bin/doodah.service
-
+* When skin does not exist, create one anyway of type "missing skin"
+    Use location from layout file and size if known
+    Must be generated, Not a physical skin
+        because we need to add text to "text=" inside meter.
+  
 IMPROVEMENTS
 * Get version number from setup file instead of hard coding
 
