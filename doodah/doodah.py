@@ -3,8 +3,8 @@
 ## (c) Copyright Si Dunford, July 2019
 ##
 import paho.mqtt.client as paho_mqtt
-import os
-import json
+import os,sys
+#import json
 import configparser
 
 # RESTFUL.py
@@ -36,15 +36,74 @@ from flask import render_template
 from pathlib import Path
 
 
-app = Flask(__name__, static_folder='web')
+app = Flask(__name__, static_folder='web', template_folder='web')
 ##auth = HTTPBasicAuth()
 home = str(Path.home())
 
+## Webservice for LAYOUT
+@app.route('/$Layout=<layout>')
+def get_layout(layout):
+    print( "WEBSERVICE: get_layout( "+layout+" )" )
+    ## Retrieve file and send it to client
+    filepath = Path( home+"/doodah/"+layout+".ini" )
+    print( "SERVING LAYOUT:", filepath )
+    if not filepath.is_file():
+        abort(404)
+    with open(filepath, 'r', encoding="utf-8") as file:
+        try:
+            content = file.read()
+            response = jsonify( { 'response':'layout','name':layout,'error':'ok','ini':content } )
+        except UnicodeDecodeError:
+            response = jsonify( { 'response':'layout','name':layout,'error':'UnicodeDecodeError','ini':'' } )
+        except Exception as e:
+            response = jsonify( { 'response':'layout','name':layout,'error':e,'ini':'' } )
+        except:
+            print( sys.exc_info()[0]);
+            response = jsonify( { 'response':'layout','name':layout,'error':'fail','ini':'' } )
+    return response
+
+## Webservice for SKIN
+@app.route('/$Skin=<path:path>')
+def get_skin(path):
+    print( "WEBSERVICE: get_skin( "+path+" )" )
+    ## Extract Name from Config Name:
+    layout = path.replace("\\","/")
+    print("["+layout+"]")
+    print(os.path.split(layout))
+    print(os.path.basename(layout))
+    print(layout.split("/"))
+    skin_path=os.path.split(layout)
+    if skin_path[0]==os.path.basename(layout):
+        config_name=skin_path[0]
+        skin_file=skin_path[0]
+    else:
+        config_name=skin_path[0]+"/"+skin_path[1]
+        skin_file=skin_path[1]
+    print( config_name )
+    ## Retrieve file and send it to client
+    filepath = Path( home+"/doodah/"+config_name+"/"+skin_file+".ini" )
+    print( "SERVING SKIN:", filepath )
+    if not filepath.is_file():
+        abort(404)
+    with open(filepath, 'r', encoding="utf-8") as file:
+        content = file.read()
+        try:
+            content = file.read()
+            response = jsonify( { 'response':'skin','name':config_name,'error':'ok','ini':content } )
+        except UnicodeDecodeError:
+            response = jsonify( { 'response':'skin','name':config_name,'error':'UnicodeDecodeError','ini':'' } )
+        except Exception as e:
+            response = jsonify( { 'response':'skin','name':config_name,'error':e,'ini':'' } )
+        except:
+            print( sys.exc_info()[0]);
+            response = jsonify( { 'response':'skin','name':config_name,'error':'fail','ini':'' } )
+    return response
+    
 ## Serve the default skin
 @app.route('/')
 def root(): 
-    #return app.send_static_file('web/doodah.html?')
-    return serve_layout( 'Default' )
+    #return serve_layout( 'Default' )
+    return render_template('doodah.html', title='Default', preload='')   
 
 ## Serve favicon
 @app.route('/favicon.ico')
@@ -68,7 +127,8 @@ def css(path):
 ## Catches all other submissions
 @app.route('/<path:filename>')
 def specific(filename): 
-    return serve_layout( filename )
+    #return serve_layout( filename )
+    return render_template('doodah.html', title=filename, preload='')   
 
 ## ** Serve static pages **
 ##@app.route('<path:filename>')
@@ -101,43 +161,71 @@ def serve_layout( name ):
     print( "SERVING LAYOUT:", filepath )
     if not filepath.is_file():
         abort(404)
-    skins = { 
-        'title':"name",
-        'skins':{'skins':"var thisisatest=1;" }
-    }
-    layout = configparser.ConfigParser()
+    ##skins = { 
+    ##    'title':"name",
+    ##    'skins':{'skins':"var thisisatest=1;" }
+    ## }
+    layout = configparser.RawConfigParser()
     
     ## Open Layout file
-    layout.read(filepath)
+    try:
+        layout.read(filepath)
+    except( DuplicateOptionError, DuplicateSectionError) as e:
+        print('Duplicate Option/Section in file [%s] !', e)
+        
+    preload = {
+        'skins':{}
+        }
     
     ## Parse all sections, importing the skins
-    for section in layout.sections():
+    for skin in layout.sections():
         ## Standardise the path separator
-        section = section.replace("\\","/")
+        skin = skin.replace("\\","/")
         ## Open skin
-        print("")
-        print("["+section+"]")
-        print(os.path.split(section))
-        print(os.path.basename(section))
-        print(section.split("/"))
-        skin_path=os.path.split(section)
-        if skin_path[0]==os.path.basename(section):
-            skin_folder=skin_path[0]
+        ##print("")
+        ##print("["+skin+"]")
+        ##print(os.path.split(skin))
+        ##print(os.path.basename(skin))
+        ##print(skin.split("/"))
+        skin_path=os.path.split(skin)
+        if skin_path[0]==os.path.basename(skin):
+            config_name=skin_path[0]
             skin_file=skin_path[0]
         else:
-            skin_folder=skin_path[0]+"/"+skin_path[1]
+            config_name=skin_path[0]+"/"+skin_path[1]
             skin_file=skin_path[1]
-        print( ".Path:"+skin_folder)
+        print( config_name )
         print( ".File:"+skin_file)
-        skin = Path( home+"/doodah/"+skin_folder+"/"+skin_file+".ini" )
-        print( ".location:"+str(skin))
-        if not skin.is_file():
-            print( "ERROR:",skin,"is not found" )
+        skin_path = Path( home+"/doodah/"+config_name+"/"+skin_file+".ini" )
+        print( ".location:"+str(skin_path))
+        preload['skins'][config_name]={}
+        if not skin_path.is_file():
+            print( "ERROR:",skin_path,"is not found" )
+            preload['skins'][config_name]["Missing Skin"]={}
+            preload['skins'][config_name]["Missing Skin"]['meter']="string"
+            preload['skins'][config_name]["Missing Skin"]['text']="Missing Skin: "+config_name
         else:
-            config = configparser.ConfigParser()
-            config.read( skin )
-        
-    return render_template('doodah.html', title=name, preload=json.dumps(skins))
+            config = configparser.RawConfigParser()
+            try:
+                layout.read(filepath)
+                config.read( skin_path )
+                ##preload.skins[config_name]={}
+                for section in config.sections():
+                    #print( "["+section+"]" )
+                    preload['skins'][config_name][section]={}
+                    #for key in config.items(section):
+                    for key in config.options(section):
+                        value = config.get(section,key)
+                        #print( key + "=="+value )
+                        preload['skins'][config_name][section][key]=value
+            except( DuplicateOptionError ) as e:
+                print('Duplicate Option in file [%s] !', e)
+            except( DuplicateSectionError) as e:
+                print('Duplicate Section in file [%s] !', e)
+            
+    return render_template('doodah.html', title=name, preload='')
+    #reformat_preload(preload))
+    ##preload=json.dumps(skins))
     ## dict = json.loads(input)
     
 ## Serve Skin Resources **
@@ -149,7 +237,12 @@ def serve_resource(skin,filename):
         return send_from_directory(path, filename)
     except FileNotFoundError:
         abort(404)
-        
+
+## Reformat a Python Array into a Javascript Object
+def reformat_preload( preload ):
+    
+    return json.dumps( preload)
+
 """    
 tasks = [
     {

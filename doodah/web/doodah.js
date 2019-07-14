@@ -1,3 +1,12 @@
+// DOODAH JAVASCRIPT LIBRARY
+// (c) Copyright Si Dunford, July 2019
+// VERSION 0.0.1, Pre-Release, Not suitable for production
+
+/* CHANGE LOG:
+ * V0.0.1	01 JUL 2019, Initial build.
+ *
+ */
+
 /* 
 DESIGN CHANGES:
 
@@ -72,9 +81,7 @@ BUGS
 * in Preload: padding should be four comma seperated numbers. Not object array
 * when skinsize is not defined it is -1. It should be calculated.
 
-CHANGES:
-===========
-V0.0.1	01 JUL 2019, Initial build.
+
 
 COLOR: 
 https://htmlcolorcodes.com/color-chart/
@@ -88,9 +95,77 @@ var AllMeters = {};	// List of all meters
 
 //var cursor ={x:0,y:0};
 var previous = undefined;
+var layout = {}
+
+class Layout {
+    constructor( name, config ){
+        console.log( "Layout "+name+" created." );
+        this.name = name;
+        this.config = {};
+        //
+        //console.log( config );
+        for (var section in config ){
+            //console.log( "Section: "+section  );
+            // Ignore anything that is not in a section:
+            if( typeof config[section]==="object" ){
+                // Check if section is layout configuration rather than skins:
+                if( section=='doodah'|| section=='rainmeter' ){
+                    // Layout configuration
+                    //console.log( ". Reading doodah config" );
+                    
+                    // Currently there is nothing in this section of a layout that we use!
+                    //read_config(config[section]);
+                    // Read config from layout file
+                    //this.config.windowx = ExtractNumber( config, 'windowx', 0 );
+                    //this.config.windowy = ExtractNumber( config, 'windowy', 0 );
+                } else {
+                    // This section should be a skin
+                    //console.log( ". Creating SKIN" );
+                    section = section.replace("\\","/");
+                    Skins[section] = new Skin( section, config[section], this );
+                    // Request skin configuration from server
+                    get_skin( section );
+                }
+            }
+        }
+    }
+}
 
 class Skin {
-	constructor( name, definition, parent ){
+    constructor( name, config, parent ){
+        console.log( "Skin "+name+" created." );
+        this.name = name;
+        this.config = {};
+        this.meters = {};
+        this.measures = {};
+        this.variables = {};
+        this.meta = {};
+        //
+        // Read basic configuration from the layout
+        
+        // Set initial variable values:
+		//this.config.windowx = ExtractNumber( config, 'windowx', 0 );
+		//this.config.windowy = ExtractNumber( config, 'windowy', 0 );
+		this.config.update = ExtractNumber( config, 'update', 1000 );
+		this.config.dynamicwindowsize = ExtractNumber( config, 'dynamicwindowsize', 0 );
+		this.config.skinwidth = ExtractNumber( config, 'skinwidth', -1 );
+		this.config.skinheight = ExtractNumber( config, 'skinheight', -1 );
+        
+        // CREATE DOM OBJECT (DIV) FOR SKIN
+        //console.log( "'%s' pos:",name );
+        //console.log( " X: %s",this.config.windowx );
+        //console.log( " Y: %s",this.config.windowy );
+        //console.log( " W: %s",this.config.skinwidth );
+        //console.log( " H: %s",this.config.skinheight );
+		this.dom = document.createElement('div');
+		this.dom.setAttribute("id", "skin."+this.name);
+		this.dom.className='skin';
+        this.dom.style.left = this.config.windowx+"px";
+		this.dom.style.top = this.config.windowy+"px";
+		document.body.appendChild(this.dom);
+        
+    }
+	old_constructor( name, definition, parent ){
 		console.log( "# Creating skin for %s",name );
 		// Add self to Skin list
 		Skins[name] = this;
@@ -184,7 +259,29 @@ class Skin {
 //			console.log("tick, "+this.name);
 //		},this.updateTime).bind(this);
 	}
-	
+	// Load the skin .ini file into existing skin.
+	load_config( ini ){
+        for (var section in ini ){
+            console.log( section + ":::" + ini[section] );
+            // Ignore anything that is not in a section:
+            if( typeof ini[section]==="object" ){
+                section = section.replace("\\","/");
+                if( section=='doodah' ){
+                    // Layout configuration
+                    read_config(ini[section]);
+                } else {
+                    // Meters, Measures or Variables etc...
+                }
+            }
+        }
+        // Read config from INI file
+        //this.config.windowx = ExtractNumber( ini, 'windowx', 0 );
+		//this.config.windowy = ExtractNumber( ini, 'windowy', 0 );
+		this.config.update = ExtractNumber( ini['doodah'], 'update', 1000 );
+		this.config.dynamicwindowsize = ExtractNumber( ini.doodah, 'dynamicwindowsize', 0 );
+		this.config.skinwidth = ExtractNumber( ini.doodah, 'skinwidth', -1 );
+		this.config.skinheight = ExtractNumber( ini.doodah, 'skinheight', -1 );
+    }
 }
 
 function ExtractNumber( definition, variable, otherwise ){
@@ -401,15 +498,85 @@ class Meter_bar extends Meter {
 	}
 }
 
-
-// Get a list of skins from server
-// INITIALLY THIS IS PRE-LOADED, SO WE DONT NEED THIS
-function getSkins(){
+// ========================================
+function get_layout(name) {
+    var doodah_server = new XMLHttpRequest();
+	doodah_server.open( "GET", "$Layout="+name, true);
+    doodah_server.onreadystatechange = function() {
+        xhttp = this;
+        if (xhttp.readyState == 4) {
+            if( xhttp.status == 200 ) {
+                //console.log( "Connection Successful", 1 );
+                try{
+                    //console.log(xhttp.responseText);
+                    var response = JSON.parse(xhttp.responseText);
+                    //console.log( response );
+                    console.log( "LAYOUT RECEIVE: "+response.name+", "+response.error );
+                    if( response.error!=="ok" ) {
+                        console.log( "$ FAILED TO LOAD LAYOUT: "+response.name );
+                        console.log( "$ ERROR: "+response.error );
+                    } else {
+                        console.log( "LAYOUT LOADED: "+response.name );
+                        var ini = parseINIString( response.ini );
+                        layout = new Layout( response.name, ini );
+                    }
+                } catch(e) {
+    //console.log( "Failed to parse JSON response<br>"+e.name+"<br>"+HTMLProtect(xhttp.responseText) );
+    //				local.setState( 3 );
+    //				local.message="Failed to parse JSON response<br>"+e.name+"<br>"+HTMLProtect(xhttp.responseText);
+                    console.log( "Failed to parse JSON response: "+e.name );
+                }
+             } else if( xhttp.status==0 ) {
+                console.log( "Resource cannot be initialised." );
+            } else {
+                console.log( "Status:"+xhttp.status+" ("+xhttp.statusText+")" );
+                //console.log( HTMLProtect(xhttp.responseText) );
+            }
+        }
+    };
+	doodah_server.send();
 }
 
-// Reload an individual skin from server
-// Used when user asks for a single skin to be refreshed
-function loadSkin( sking ){
+// ========================================
+function get_skin(name) {
+    var doodah_server = new XMLHttpRequest();
+	doodah_server.open( "GET", "$Skin="+name, true);
+    doodah_server.onreadystatechange = function() {
+        xhttp = this;
+        if (xhttp.readyState == 4) {
+            if( xhttp.status == 200 ) {
+                //console.log( "Connection Successful", 1 );
+                try{
+                    //console.log(xhttp.responseText);
+                    var response = JSON.parse(xhttp.responseText);
+    //console.log( "Data length:"+response.length );
+                    //console.log( response );
+                    console.log( "SKIN RECEIVE: "+response.name+", "+response.error );
+                    if( response.error!=="ok" ) {
+                        console.log( "$ FAILED TO LOAD SKIN: "+response.name );
+                        console.log( "$ ERROR: "+response.error );
+                    } else {
+                        console.log( "SKIN LOADED: "+response.name );
+                        skin = Skins[response.name];
+                        if(skin) {
+                            var ini = parseINIString( response.ini );
+                            skin.load_config( ini );
+                        } else {
+                            console.log("$ Invalid skin");
+                        }
+                    }
+                } catch(e) {
+                    console.log( "Failed to parse JSON response: "+e.name );
+                }
+            } else if( xhttp.status==0 ) {
+                console.log( "Resource cannot be initialised." );
+            } else {
+                //console.log( "Status:"+xhttp.status+" ("+xhttp.statusText+")" );
+                //console.log( HTMLProtect(xhttp.responseText) );
+            }
+        }
+    };
+	doodah_server.send();
 }
 
 
@@ -449,14 +616,65 @@ class className {
 //var objTest = new className();
 //objTest.metName();
 
+// ============================================================
+function HTMLProtect( str ) {
+var html = str.replace(/</g,"&lt;" );
+	html = html.replace(/>/g,"&gt;" );
+	return html;
+}
+
+// Config Parser by YumYumYum
+// https://stackoverflow.com/questions/3870019/javascript-parser-for-a-string-which-contains-ini-data
+// Modified by Si Dunford to always use lowercase for keys.
+function parseINIString(data){
+    var regex = {
+        section: /^\s*\[\s*([^\]]*)\s*\]\s*$/,
+        param: /^\s*([^=]+?)\s*=\s*(.*?)\s*$/,
+        comment: /^\s*;.*$/
+    };
+    var value = {};
+    var lines = data.split(/[\r\n]+/);
+    var section = null;
+    lines.forEach(function(line){
+        if(regex.comment.test(line)){
+            return;
+        }else if(regex.param.test(line)){
+            var match = line.match(regex.param);
+            if(section){
+                value[section][match[1].toLowerCase()] = match[2];
+            }else{
+                value[match[1].toLowerCase()] = match[2];
+            }
+        }else if(regex.section.test(line)){
+            var match = line.match(regex.section);
+            value[match[1]] = {};
+            section = match[1];
+            //console.log( value);
+        }else if(line.length == 0 && section){
+            section = null;
+        };
+    });
+    //console.log( "INI FILE");
+    //console.log( value);
+    return value;
+}
 
 // Start the launcher
 // Loop through all skins, create them as objects
 window.onload = function(){
-	// Loop through pre-loaded skins and create them
-	for (var key in preload.skins) {
-		if(!(key in Skins)){
-			skin = new Skin( key, preload.skins[key] );
-		} // Ignore duplicate skins. 
-	}
+	// Get Layout from URL
+    layout = window.location.pathname;
+    layout = layout.slice(1)   // Remove leading "/"
+    if( !layout||layout=='' ) layout='Default';
+    console.log( "LOADING LAYOUT: "+layout );
+    get_layout( layout );
+    
+    console.log( preload);
+    // Loop through pre-loaded skins and create them
+//	for (var key in preload.skins) {
+//		if(!(key in Skins)){
+//			skin = new Skin( key, preload.skins[key] );
+//		} // Ignore duplicate skins. 
+//	}
+	
 }

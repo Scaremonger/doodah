@@ -3,6 +3,13 @@ BUGS:
     Use location from layout file and size if known
     Must be generated, Not a physical skin
         because we need to add text to "text=" inside meter.
+* LAYOUT FILE With key=value outside section crashes it.
+* SKIN FILE With key=value outside section crashes it.
+* In doodah_server.onreadystatechange():
+    Invalid layouts should display an error message, maybe an error Meter?
+    Invalid skins should create a error skin with the error message
+* Requests for Skins/Layouts containing spaces adds a %20 into the URL which is not removed.
+* Requests for skins are lowercase
   
 IMPROVEMENTS
 * Get version number from setup file instead of hard coding

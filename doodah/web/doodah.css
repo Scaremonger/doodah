@@ -1,12 +1,21 @@
 /* Doodah Default Stylesheet */
 
 * {
-margin:0;
-padding:0;
+    margin:0;
+    padding:0;
 }
-
 .debug {
 	border:#ff0000 thin dotted;
+    color:#ff0000;
+    background-color:#ffffff;
+}
+.error {
+    border:#ff0000 thin solid;
+    color:#ff0000;
+    text-align:center;
+}
+.hidden{
+    visibility: hidden;
 }
 .skin {
 	border:#ff0000 thin dotted;
@@ -26,6 +35,4 @@ padding:0;
 	vertical-align:top;
 }
 
-.hidden{
-    visibility: hidden;
-}
+
