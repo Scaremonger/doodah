@@ -52,14 +52,14 @@ def get_layout(layout):
     with open(filepath, 'r', encoding="utf-8") as file:
         try:
             content = file.read()
-            response = jsonify( { 'response':'layout','name':layout,'error':'ok','ini':content } )
+            response = jsonify( { 'response':'layout','name':layout,'status':'ok','ini':content } )
         except UnicodeDecodeError:
-            response = jsonify( { 'response':'layout','name':layout,'error':'UnicodeDecodeError','ini':'' } )
+            response = jsonify( { 'response':'layout','name':layout,'status':'UnicodeDecodeError','ini':'' } )
         except Exception as e:
-            response = jsonify( { 'response':'layout','name':layout,'error':e,'ini':'' } )
+            response = jsonify( { 'response':'layout','name':layout,'status':e,'ini':'' } )
         except:
             print( sys.exc_info()[0]);
-            response = jsonify( { 'response':'layout','name':layout,'error':'fail','ini':'' } )
+            response = jsonify( { 'response':'layout','name':layout,'status':'fail','ini':'' } )
     return response
 
 ## Webservice for SKIN
@@ -86,17 +86,17 @@ def get_skin(path):
     if not filepath.is_file():
         abort(404)
     with open(filepath, 'r', encoding="utf-8") as file:
-        content = file.read()
+        ##content = file.read()
         try:
             content = file.read()
-            response = jsonify( { 'response':'skin','name':config_name,'error':'ok','ini':content } )
+            response = jsonify( { 'response':'skin','name':config_name,'status':'ok','ini':content } )
         except UnicodeDecodeError:
-            response = jsonify( { 'response':'skin','name':config_name,'error':'UnicodeDecodeError','ini':'' } )
+            response = jsonify( { 'response':'skin','name':config_name,'status':'UnicodeDecodeError','ini':'' } )
         except Exception as e:
-            response = jsonify( { 'response':'skin','name':config_name,'error':e,'ini':'' } )
+            response = jsonify( { 'response':'skin','name':config_name,'status':e,'ini':'' } )
         except:
             print( sys.exc_info()[0]);
-            response = jsonify( { 'response':'skin','name':config_name,'error':'fail','ini':'' } )
+            response = jsonify( { 'response':'skin','name':config_name,'status':'fail','ini':'' } )
     return response
     
 ## Serve the default skin

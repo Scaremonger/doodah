@@ -9,6 +9,27 @@
     color:#ff0000;
     background-color:#ffffff;
 }
+
+/* SYSTEM DEBUGGER - NOT USED IN PRODUCTION */
+#debugger {
+    position:absolute;
+    bottom:0;
+    left:0;
+    width:100%;
+}
+.card {
+    border:#00007f thin solid;
+    color:#00007f;
+    float:left;
+    font-size:8pt;
+    padding:3px;
+    margin:5px;
+    height:400px;
+    overflow:auto;
+}
+
+/*******/
+
 .error {
     border:#ff0000 thin solid;
     color:#ff0000;
@@ -21,18 +42,64 @@
 	border:#ff0000 thin dotted;
     display:inline-block;
 	position:fixed;
-	overflow:hidden;    
 }
+.dynamicwindowsize0 {
+    overflow:hidden;
+}
+/* POPUP SUPPORT FOR METERS */
+.meter .popup {
+  display: none;
+}
+
+.meter:hover .popup {
+  position:absolute;
+  top:0;
+  left:0;
+  background-color:#ffff00;
+  display: block;
+  overflow:auto;
+}
+
+/* Tooltip container */
+.tooltip {
+  position: relative;
+  display: inline-block;
+  border-bottom: 1px dotted black; /* If you want dots under the hoverable text */
+}
+
+/* Tooltip text */
+.tooltip .tooltiptext {
+  visibility: hidden;
+  width: 120px;
+  background-color: black;
+  color: #fff;
+  text-align: center;
+  padding: 5px 0;
+  border-radius: 6px;
+ 
+  /* Position the tooltip text - see examples below! */
+  position: absolute;
+  z-index: 1;
+}
+
+/* Show the tooltip text when you mouse over the tooltip container */
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+}
+
+/* STANDARD METER STYLES */
 .meter {
 	border:#00ff00 thin dotted;
     position:absolute;
-	overflow:auto;
+	/*overflow:auto;*/
 	display:inline-block;
 	
 }
-.meterString {
+.meterString, .metererror {
     /* Remove gap below element */
 	vertical-align:top;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
-
 

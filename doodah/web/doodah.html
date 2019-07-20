@@ -127,7 +127,9 @@ skins:{
 }
 
 </script>
-<script src="css/doodah.js"></script>
+<script src="js/doodah.js"></script>
+<script src="js/meters.js"></script>
+<script src="js/measures.js"></script>
 </head>
 <body>
 
@@ -135,8 +137,9 @@ skins:{
 <div class='meter text meterstring'>
 Anyway
 <!-- Don;t add CRLF between elements or you'll get a gap! -->
-</div><div class='meter clock'>
-C
+</div><div class='meter clock tooltip'>
+<div class='content meterstring'>Some text</div>
+<span class='tooltiptext'>TEST POPUP</span>
 </div></div>
 <div class='skin two' style='width:150px;height:33px;'>
 <div class='meter textual'>
@@ -147,6 +150,10 @@ C
 </div></div>
 
 <div id='debugger'></div>
+
+<div class="tooltip">Hover over me
+  <span class="tooltiptext">Tooltip text</span>
+</div>
 
 </body>
 </html>
