@@ -99,7 +99,7 @@ var layout = {}
 
 class Layout {
     constructor( name, config ){
-        console.log( "Layout "+name+" created." );
+        console.log( "  new Layout( '"+name+"' )" );
         this.name = name;
         this.config = {};
         //
@@ -155,25 +155,27 @@ class Layout {
                     var response = JSON.parse(server.responseText);
     //console.log( "Data length:"+response.length );
                     //console.log( response );
-                    console.log( "SKIN RECEIVE: "+response.name+", "+response.status );
+                    console.log( "INITIALISE SKIN: '"+response.name+"', "+response.status );
                     if( response.status!=="ok" ) {
                         console.log( "$ FAILED TO LOAD SKIN: "+response.name );
                         console.log( "$ ERROR: "+response.status );
                         
                     } else {
-                        console.log( "SKIN LOADED: "+response.name );
-                        console.log( server.skin_name);
+                        console.log( "  Loaded Successfully" );
+                        //console.log( server.skin_name);
                         
                         skin_name = server.skin_name;
                         //layout = 
-                        console.log( "CREATING SKIN "+skin_name );
+                        //console.log( "CREATING SKIN "+skin_name );
                         var ini = parseINIString( response.ini );
                         var skin = new Skin( server.skin_parent, skin_name, ini, server.skin_config );
-                        console.log( "Skin created");
+                        //console.log( "  Skin created");
+                        
+                        // DEBUGGING
                         if(skin) {
                             showcard( skin, ini );
                         } else {
-                                console.log( "invalid skin");
+                            console.log( "$ Invalid skin");
                         }
                         /*
                         //console.log( "INI:" );
@@ -220,7 +222,7 @@ class Layout {
 
 class Skin {
     constructor( parent, skin_name, skin_config, layout_config ){
-        console.log( "Skin.constructor("+name+")" );
+        console.log( "  new Skin( '"+skin_name+"' )" );
         this.name = skin_name;
         this.config = {};
         this.meters = {};
@@ -243,10 +245,16 @@ class Skin {
 		this.dom.className='skin';
 		document.body.appendChild(this.dom);
         
+        // Create popup for debugging purposes only
+        var popup = document.createElement('span');
+        popup.innerText=this.name;
+        popup.className='tooltiptext';
+        this.dom.appendChild(popup);
+        
         // Parse the SKIN Config
 
-        console.log("$ skin.load_config()");
-        console.log(skin_config);
+        //console.log("  Loading skin config");
+        //console.log(skin_config);
         for (var section in skin_config ){
             console.log( "  SECTION: "+section);
             // Ignore anything that is not in a section:
@@ -275,7 +283,7 @@ class Skin {
             default:
                 // Is section a METER?{
                 if( skin_config[section].meter ) {
-                    console.log("Meter '"+section+"': "+skin_config[section].meter);
+                    console.log("Meter '"+section+"' ("+section_name+"): "+skin_config[section].meter);
                     var meter = CreateMeter( section_name, skin_config[section], this );
                     if(meter) {
                         this.meters[section_name] = meter;
@@ -306,13 +314,13 @@ class Skin {
             }
 
             // Update the skin
-            console.log( "Calling update");
-            this.Update();
-            console.log( "Update finished");
+            //console.log( "Calling update");
+            //this.Update();
+            //console.log( "Update finished");
         }
-        console.log( "sections finished");
+        //console.log( "sections finished");
         
-        // Set the object values
+        // Set the skin values
         this.xpos = this.config.windowx;
         this.ypos = this.config.windowy;
         this.width = this.config.skinwidth;
@@ -322,9 +330,12 @@ class Skin {
         this.dom.style.left = this.xpos+"px";
 		this.dom.style.top = this.ypos+"px";
         this.dom.style.height = this.height+"px";
-		this.dom.style.width = this.width+"px";        
-
-
+		this.dom.style.width = this.width+"px";
+        // Set fixed size/width skins to truncate overay content
+        if( this.config.dynamicwindowsize==0 ) {
+            this.dom.classList.add("dynamicwindowsize0");
+        }
+        this.Update();
         
         
         // Start Self-timer for the skin.
@@ -434,10 +445,10 @@ class Skin {
 	
     // Function called every "UPDATE" milliseconds
     Update(){
-        console.log( "UPDATING SKIN "+this.name );
+        console.log( "UPDATING SKIN: "+this.name );
         // Loop through all meters, calling their update function
         for( var meter in this.meters ){
-            console.log( "  Meter "+JSON.stringify( meter));
+            //console.log( "  Meter "+JSON.stringify( meter));
             //meter.Update();
         }
         this.dom.style.left = this.xpos+"px";
@@ -445,14 +456,16 @@ class Skin {
             
         // Skin resize to fit meters?
         if( this.config.dynamicwindowsize==1 ) {
-            console.log( "(Dynamic sizing configured)" );
+            console.log( "  ! Dynamic sizing configured" );
             // Calculate size of skin based on meters
             this.width = 0;
             this.height = 0;
-            for( var meter in this.meters ){
+            for( var meter_name in this.meters ){
+                //console.log( "    "+meter_name );
+                var meter = this.meters[meter_name]
                 this.width = Math.max( this.width, meter.width );
                 this.height = Math.max( this.height, meter.height );
-                console.log( "  METER: "+meter.name+": sX="+meter.xpos+", Y="+meter.ypos+", W="+meter.width+", H="+meter.height );
+                console.log( "    METER: "+meter_name+": sX="+meter.xpos+", Y="+meter.ypos+", W="+meter.width+", H="+meter.height );
             }
             // Update DOM size
             this.dom.style.width = this.width+"px";
@@ -536,13 +549,13 @@ function get_layout(name) {
                     //console.log(xhttp.responseText);
                     var response = JSON.parse(xhttp.responseText);
                     //console.log( response );
-                    console.log( "LAYOUT RECEIVE: "+response.name+", "+response.status );
+                    console.log( "INITIALISE LAYOUT: '"+response.name+"', "+response.status );
                     
                     if( response.status!=="ok" ) {
                         console.log( "$ FAILED TO LOAD LAYOUT: "+response.name );
                         console.log( "$ ERROR: "+response.status );
                     } else {
-                        console.log( "LAYOUT LOADED: "+response.name );
+                        console.log( ". Loaded successfully." );
                         var ini = parseINIString( response.ini );
                         layout = new Layout( response.name, ini );
                     }
@@ -565,6 +578,7 @@ function get_layout(name) {
 }
 
 // ========================================
+/*
 function get_skin(layout, skin_file, skin_name, skin_layout) {
     var doodah_server = new XMLHttpRequest();
     console.log(" CHECK:"+skin_name);
@@ -583,12 +597,12 @@ function get_skin(layout, skin_file, skin_name, skin_layout) {
                     var response = JSON.parse(xhttp.responseText);
     //console.log( "Data length:"+response.length );
                     //console.log( response );
-                    console.log( "SKIN RECEIVE: "+response.name+", "+response.status );
+                    console.log( "INITIALISE SKIN '"+response.name+"', "+response.status );
                     if( response.status!=="ok" ) {
                         console.log( "$ FAILED TO LOAD SKIN: "+response.name );
                         console.log( "$ ERROR: "+response.status );
                     } else {
-                        console.log( "SKIN LOADED: "+response.name );
+                        console.log( ". Loaded successfully." );
                         //console.log( "INI:" );
                         //console.log( response.ini );
                         // Get existing Skin
@@ -769,10 +783,10 @@ window.onload = function(){
     layout = window.location.pathname;
     layout = layout.slice(1)   // Remove leading "/"
     if( !layout||layout=='' ) layout='Default';
-    console.log( "LOADING LAYOUT: "+layout );
+    console.log( "Layout '"+layout+ "' Selected" );
     get_layout( layout );
     
-    console.log( preload);
+    //console.log( preload);
     // Loop through pre-loaded skins and create them
 //	for (var key in preload.skins) {
 //		if(!(key in Skins)){

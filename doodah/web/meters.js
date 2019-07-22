@@ -64,9 +64,9 @@ function CreateMeter( meter_name, meter_config, parent ){
 
 class Meter {
 	constructor( parent, meter_name, meter_config ){
-		console.log( "CREATE METER: "+ name);
+		console.log( "CREATE METER: "+ meter_name);
 		this.parent = parent; // This is the Parent skin
-		this.name = name; // Name fo the meter
+		this.name = meter_name; // Name fo the meter
 		this.metertype = meter_config.meter.toLowerCase();
 		// Create DOM element
 		this.dom = document.createElement('div');
