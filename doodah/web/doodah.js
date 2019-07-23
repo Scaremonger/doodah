@@ -3,24 +3,45 @@
 // VERSION 0.0.1, Pre-Release, Not suitable for production
 
 /* CHANGE LOG:
- * V0.0.1	01 JUL 19, Initial build.
- *
- */
+ * 0.0.1    01 JUL 19   Initial build.
+ * 0.0.2    20 JUL 19   Split Meter into own file
+ * 0.0.3    23 JUL 19   Added update/updatedivider and system timer
 
-/* 
-DESIGN CHANGES:
+THINGS TO DO NEXT
+-----------------
+1 of the three SKINS has dissapeared while adding Previous_Skin and Previous_Meter
+    Simple image does not exist, so thats to be expected (although there should be a err skin)
+    text is gone? why?
+Layout manager:
+* Use Previous_Skin and Previous_Meter variables (instead of just previous) when adding them. 
+* previous_meter, should be Previous_Meter
+* New Skin should NULL the Previous Meter
+* padding (and margins if rainmeter has them)
+Basic config:
+* colours of text, background, border for skin AND meters
+* font size and face
 
-The preload definition IS the SKIN object.
-The definition should be used INSTEAD of reading the array and parsing it.
-The definition should have been parsed before it is added to the Preload array.
+VERSION 0.0.2
+Loading errors:
+* When SKIN fails to load, or fails to parse, create an ERROR skin containing an error meter with it's SIZE and POSITION
+* When METER fails to load or initialise, a METER_STRING should be added with formatting NOT A METER_ERROR TYPE
+    meter=string 
+    text=Meter 'NAME' failed to initialise
+    dynamicwindowsize=1
+    Should set border, background and text colour/size/font
+* Replace console.log with "log()" which only displays text when DEBUG=TRUE
+* Add IMAGE meter, which loads an image
+* Add variable substitution
 
-skin = Skin( key, preload[key] );
+Known Bugs:
+-----------
+* HTML file contains static skins, meters and test code. Remove it!
 
-Skin() should add function prototypes into the preload array making it a proper skin object
-which can then be called directly.
-
-Meter() should do the same, addding the appropiate functions for the meter typebeing created.
-YOU DONT NEED METER_STRING CLASS ETC as the Meter() function is a factory...
+Debugging code:
+* Add variable DEBUG=TRUE/FALSE, only show debugging code when TRUE
+* Remove popup and tooltip code and CSS
+* Remove CARD and DEBUGGING code and CSS
+* Green/Red dotted borders around skin and meters in CSS
 
 OUTSTANDING
 ===========
@@ -34,14 +55,6 @@ Preload functions:
 	* ExtractPosition( definition, key, default )	- DONE
 	* ExtractColor( definition, key, default )		- RRR,GGG,BBB[,AAA] / RRGGBB[AA] etc
 	* ExtractPadding( definition, key, default )	- l,t,r,b (NOTE DIFFERENCE WITH CSS)
-
-doodah.ini should have a section for each "loaded" skin 
-[See "Reference|Settings|[Skin] Sections" in rainmeter documentation
-This "LIST" of sections should be used to create preload array.
-Each section is named after the skin and contains:
-	position on desktop of skin:
-	windowx=
-	windowy=
 
 VARIABLES:
 (Including;
@@ -76,12 +89,6 @@ Actions: NOT IMPLEMENTED
 Bangs: NOT IMPLEMENTED
 Is there one to SetWallpaper? If so, this must set the body background image.
 
-BUGS
-===========
-* in Preload: padding should be four comma seperated numbers. Not object array
-* when skinsize is not defined it is -1. It should be calculated.
-* When SKIN fails to load, or fails to parse, create an ERROR skin instead.
-
 
 COLOR: 
 https://htmlcolorcodes.com/color-chart/
@@ -94,7 +101,8 @@ var Skins = {};		// List of available nodes
 var AllMeters = {};	// List of all meters
 
 //var cursor ={x:0,y:0};
-var previous = undefined;
+var Previous_Meter = undefined;
+var Previous_Skin = undefined;
 var layout = {}
 
 class Layout {
@@ -131,6 +139,10 @@ class Layout {
             this.request_skin( skin_file, skin_name, config[section] );
         }
         
+        // Start System Timer
+		this.timer = setInterval( function(){
+            this.Update( Date.now() );
+		}.bind(this),100);      
     }
     request_skin( skin_file, skin_name, config ) {
         // Create a request
@@ -174,6 +186,7 @@ class Layout {
                         // DEBUGGING
                         if(skin) {
                             showcard( skin, ini );
+                            Skins[skin_name] = skin;
                         } else {
                             console.log( "$ Invalid skin");
                         }
@@ -218,6 +231,17 @@ class Layout {
 	server.send();
     
     }
+    
+    // System Update timer
+    Update( now ) {
+        // Loop through all Skins, checking their last update and refreshing them where necessary
+        Previous_Skin = undefined;
+        for( var skin_name in Skins ) {
+            var skin = Skins[skin_name];
+            if( skin.next_update<now ) skin.Update( now );
+            Previous_Skin = skin;
+        }
+    }
 }
 
 class Skin {
@@ -229,10 +253,11 @@ class Skin {
         this.measures = {};
         this.variables = {};
         this.meta = {};
+        this.next_update = 0;
 
         // Read config from LAYOUT config
-		this.config.windowx = ExtractNumber( layout_config, 'windowx', 0 );
-		this.config.windowy = ExtractNumber( layout_config, 'windowy', 0 );
+		this.config.windowx = ExtractNumber( layout_config, 'windowx', -1 );
+		this.config.windowy = ExtractNumber( layout_config, 'windowy', -1 );
 
         // Read config from SKIN config
 		//this.config.dynamicwindowsize = ExtractNumber( skin_config, 'dynamicwindowsize', 0 );
@@ -270,6 +295,8 @@ class Skin {
                 // Extract Skin configuration
                 this.config.update = ExtractNumber( skin_config[section], 'update', 1000 );
                 if( this.config.update<500 ) this.config.update = 500;
+                this.config.updatedivider = ExtractNumber( skin_config[section], 'updatedivider', 1 );
+                //
                 this.config.dynamicwindowsize = ExtractNumber( skin_config[section], 'dynamicwindowsize', 0 );
                 this.config.skinwidth = ExtractNumber( skin_config[section], 'skinwidth', 100 );
                 this.config.skinheight = ExtractNumber( skin_config[section], 'skinheight', 30 );
@@ -346,111 +373,43 @@ class Skin {
 		}.bind(this),this.config.update);
 		*/
     }
-	/*
-     * old_constructor( name, definition, parent ){
-		console.log( "# Creating skin for %s",name );
-		// Add self to Skin list
-		Skins[name] = this;
-		//
-		this.name = name;
-        
-		// Set initial variable values:
-        this.config = {};
-		this.config.windowx = ExtractNumber( definition, 'windowx', 0 );
-		this.config.windowy = ExtractNumber( definition, 'windowy', 0 );
-		this.config.update = ExtractNumber( definition['doodah'], 'update', 1000 );
-		this.config.dynamicwindowsize = ExtractNumber( definition.doodah, 'dynamicwindowsize', 0 );
-		this.config.skinwidth = ExtractNumber( definition.doodah, 'skinwidth', -1 );
-		this.config.skinheight = ExtractNumber( definition.doodah, 'skinheight', -1 );
-
-        // CREATE DOM OBJECT (DIV) FOR SKIN
-        //console.log( "'%s' pos:",name );
-        //console.log( " X: %s",this.config.windowx );
-        //console.log( " Y: %s",this.config.windowy );
-        //console.log( " W: %s",this.config.skinwidth );
-        //console.log( " H: %s",this.config.skinheight );
-		this.dom = document.createElement('div');
-		this.dom.setAttribute("id", "skin."+this.name);
-		this.dom.className='skin';
-        this.dom.style.left = this.config.windowx+"px";
-		this.dom.style.top = this.config.windowy+"px";
-		document.body.appendChild(this.dom);
-        
-		//
-		this.Meters = {};
-		this.Measures = {};
-		this.Variables = {};
-		this.Meta = {};
-	
-		// Loop through skin sections
-		for (var section in definition) {
-			//console.log("SECTION: %s",section);
-			if( section=='doodah' ) continue;
-			if( section=='metadata' ) {
-				this.Meta = definition[section];
-				continue;
-			}
-			if( section=='variables' ) continue;
-			// Is section a METER?
-			if( definition[section].meter ) {
-				console.log("Meter '"+section+"': "+definition[section].meter);
-				var metertype = definition[section].meter;
-				switch( metertype ){
-				case 'string':
-					console.log("Creating string meter");
-					// Add a new Meter to the list
-					var meter = new Meter_String( this, section, definition );
-					this.Meters[section] = meter;
-					AllMeters[name+"."+section]=meter;
-					break;
-				default:
-					console.log("# Unknown meter type "+metertype);
-				}
-			}
-			// Is section a MEASURE?
-			if( definition[section].measure ) {
-				console.log("Measure '"+section+"': "+definition[section].measure);
-				var measuretype = definition[section].measure;
-				switch( measuretype ){
-				case 'calc':
-					console.log("Creating calc measure");
-					// Add a new Measure to the list
-					//var measure = new Measure_Calc( this, section, definition );
-					//this.Measures[section] = measure;
-					//AllMeasures[name+"."+section]=measure;
-					break;
-				default:
-					console.log("# Unknown measure type "+measuretype);
-				}
-			}
-		}		
-
-		// Initial size of skin is based on meters:
-		if( this.config.skinwidth==-1){
-            this.config.skinwidth = 50;
-        }
-		if( this.config.skinheight==-1){
-            this.config.skinheight = 50;
-        }
-        // Update DOM size
-        this.dom.style.width = this.config.skinwidth+"px";
-        this.dom.style.height = this.config.skinheight+"px";
-        
-		// Start Self-timer
-//		this.timer = setInterval( function(){
-//			console.log("tick, "+this.name);
-//		},this.updateTime).bind(this);
-	}
-	*/
 	
     // Function called every "UPDATE" milliseconds
-    Update(){
+    Update(now=0){
         console.log( "UPDATING SKIN: "+this.name );
-        // Loop through all meters, calling their update function
-        for( var meter in this.meters ){
-            //console.log( "  Meter "+JSON.stringify( meter));
-            //meter.Update();
+        // Update all Measures
+        console.log( "> Updating measures...");
+        for( var measure_name in this.measures ){
+            var measure = this.measures[measure_name];
+            //console.log( "  Measure "+JSON.stringify( meter));
+            if( measure.next_update<now ) measure.Update( now );
         }
+        
+        // Update all Meters
+        console.log( "> Updating meters...");
+        for( var meter_name in this.meters ){
+            var meter = this.meters[meter_name];
+            //console.log( "  Meter "+JSON.stringify( meter));
+            if( meter.next_update<now ) meter.Update( now );
+        }
+        console.log( "> finished update");
+        
+        // If DOM has not fixed abode, position it next to the last skin.
+        if( this.config.windowx==-1 ) {
+            if( PreviousSkin===undefined) {
+                this.xpos = 0;
+            } else {
+                this.xpos = Previous_Skin.config.windowx + Previous_Skin.width;
+            }
+        }
+        if( this.config.windowy==-1 ) {
+            if( PreviousSkin===undefined) {
+                this.ypos = 0;
+            } else {
+                this.ypos = Previous_Skin.config.windowy + Previous_Skin.height;
+            }
+        }
+        // Skin DOM location
         this.dom.style.left = this.xpos+"px";
 		this.dom.style.top = this.ypos+"px";
             
@@ -473,6 +432,11 @@ class Skin {
         }
         console.log( "  SKIN SIZE: X="+this.xpos+", Y="+this.ypos+", W="+this.width+", H="+this.height );
         
+        // 
+        
+        // Next update
+        this.next_update = now+this.config.update;
+        console.log( "  Next Update at: "+this.next_update );
     }
 }
 
@@ -511,30 +475,6 @@ function ExtractText( definition, variable, otherwise ){
 	if(definition&&definition[variable]) return definition[variable];
     return otherwise;
 }
-
-/* FUNCTION TESTING
-console.log( ExtractPosition( "25R" ) );
-console.log( ExtractPosition( "bad" ) );
-console.log( ExtractPosition( "25r" ) );
-console.log( ExtractPosition( "" ) );
-console.log( ExtractPosition( undefined ) );
-console.log( ExtractPosition( null ) );
-console.log( JSON.stringify( ExtractPadding( "0,1,2,3") ));
-console.log( JSON.stringify( ExtractPadding( "A,1,2,3") ));
-console.log( JSON.stringify( ExtractPadding( "0,B,2,3") ));
-console.log( JSON.stringify( ExtractPadding( "0,2") ));
-console.log( JSON.stringify( 
-    ExtractPadding( { padding:'1,2,3,4' }, "padding" )
-    ));
-console.log( JSON.stringify( 
-    ExtractPadding( { X:100 }, "padding" )
-    ));
-console.log( JSON.stringify( 
-    ExtractPadding( { padding:10 }, "padding" )
-    ));
-*/
-
-
 
 // ========================================
 function get_layout(name) {
@@ -576,110 +516,6 @@ function get_layout(name) {
     };
 	doodah_server.send();
 }
-
-// ========================================
-/*
-function get_skin(layout, skin_file, skin_name, skin_layout) {
-    var doodah_server = new XMLHttpRequest();
-    console.log(" CHECK:"+skin_name);
-	doodah_server.open( "GET", "$Skin="+skin_file, true);
-    this.skin_name = skin_name;
-    this.skin_layout = skin_layout;
-    this.layout = layout;
-    doodah_server.onreadystatechange = function() {
-        xhttp = this;
-
-        if (xhttp.readyState == 4) {
-            if( xhttp.status == 200 ) {
-                //console.log( "Connection Successful", 1 );
-                try{
-                    //console.log(xhttp.responseText);
-                    var response = JSON.parse(xhttp.responseText);
-    //console.log( "Data length:"+response.length );
-                    //console.log( response );
-                    console.log( "INITIALISE SKIN '"+response.name+"', "+response.status );
-                    if( response.status!=="ok" ) {
-                        console.log( "$ FAILED TO LOAD SKIN: "+response.name );
-                        console.log( "$ ERROR: "+response.status );
-                    } else {
-                        console.log( ". Loaded successfully." );
-                        //console.log( "INI:" );
-                        //console.log( response.ini );
-                        // Get existing Skin
-                        var skin_name = this.skin_name; response.name;
-                        //skin_name = skin_name.toLowerCase();
-                        //skin_name = skin_name.replace("\\","/");
-                        console.log( "IS:: "+response.name+","+this.skin_name);
-                        console.log( "CREATING SKIN "+skin_name );
-                        var ini = parseINIString( response.ini );
-                        var skin = new Skin( skin_name, ini, this.layout );
-                        if(skin) {
-                            Skins[skin_name] = skin
-                            console.log("$ Skin valid");
-                            
-                            //console.log( "DATA FILE" );
-                            //console.log( response.ini );
-                            //console.log( "INI FILE" );
-                            //console.log( ini );
-                            //skin.load_config( ini );
-                            showcard( skin );
-                            // Add layout configuration into skin
-                            if(layout_config.windowx) skin.config.windowx=layout_config.windowx;
-                            if(layout_config.windowy) skin.config.windowy=layout_config.windowy;
-                        } else {
-                            console.log("$ Invalid skin");
-                        }
-                    }
-                } catch(e) {
-                    console.log( "Failed to parse JSON response: "+e );
-                }
-            } else if( xhttp.status==0 ) {
-                console.log( "Resource cannot be initialised." );
-            } else {
-                //console.log( "Status:"+xhttp.status+" ("+xhttp.statusText+")" );
-                //console.log( HTMLProtect(xhttp.responseText) );
-            }
-        }
-    };
-	doodah_server.send();
-}
-
-
-/*
-// Create a skin object, add it to the list and the DOM
-function createSkin( definition ){
-	skin = new Skin;
-	skin.def = definition;
-	skin.dom = createDIV( def.name );
-	skin.timer = setTimer( skin.refresh, skinupdate )
-}
-
-function skinupdate( skin ){
-	skin.obj.update()
-}
-*/
-/*
-// defines a class function
-class className {
-	constructor(){
-	this.prop = 0;
-	}
-
-	// method
-	metName() {
-//		document.getElementById('swprop').innerHTML = this.prop; // shows prop value in #swprop
-
-		// adds one unit to prop to each call, and auto-calls this function every 0.5 sec., till prop reaches 10
-//		this.prop++;
-//		if(this.prop < 10) setTimeout(this.metName.bind(this), 500);
-	}
-}
-*/
-
-
-// creates an object of className, and accesses metName()
-//var objTest = new className();
-//objTest.metName();
 
 // ============================================================
 function HTMLProtect( str ) {
@@ -786,12 +622,4 @@ window.onload = function(){
     console.log( "Layout '"+layout+ "' Selected" );
     get_layout( layout );
     
-    //console.log( preload);
-    // Loop through pre-loaded skins and create them
-//	for (var key in preload.skins) {
-//		if(!(key in Skins)){
-//			skin = new Skin( key, preload.skins[key] );
-//		} // Ignore duplicate skins. 
-//	}
-	
 }

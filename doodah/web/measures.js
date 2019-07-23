@@ -32,5 +32,13 @@
 
 class Measure {
     constructor(){
+        this.next_update=0;
+        this.parent = undefined;
+        this.config = {};
+        this.config.updatedivider=1;
+    }
+    
+    Update( now ){
+        this.next_update = now+parent.config.update*this.config.updatedivider;
     }
 }

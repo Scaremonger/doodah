@@ -28,12 +28,7 @@
  */
 
 /* KNOWN BUGS / THINGS TO DO
- * Make popups an option in the meter
- * dynamicwindowsize=0
- *      overflow:hidden
- *      Need to add class "dynamicwindowsize0" to skin object
- *      Child sizes then can be read from the DOM and skin adjusted
- * meter position is fixed, but adds on parents windowx/windowy
+ * Consider making popups an option in the meter
  */
 
 function CreateMeter( meter_name, meter_config, parent ){
@@ -68,6 +63,8 @@ class Meter {
 		this.parent = parent; // This is the Parent skin
 		this.name = meter_name; // Name fo the meter
 		this.metertype = meter_config.meter.toLowerCase();
+        this.next_update=0;
+        
 		// Create DOM element
 		this.dom = document.createElement('div');
 		this.dom.setAttribute("id", parent.name+"."+this.name);
@@ -80,6 +77,8 @@ class Meter {
 		this.config.y = ExtractPosition( meter_config.y||0 );
 		this.config.w = ExtractPosition( meter_config.w||0 );
 		this.config.h = ExtractPosition( meter_config.h||0 );
+        this.config.updatedivider=ExtractNumber( meter_config, 'updatedivider', 1 );
+        if( this.config.updatedivider<1 ) this.config.updatedivider=1;
 		this.config.text = ExtractText( meter_config, 'text', '' );
         
         // Calculated position and size:
@@ -105,7 +104,6 @@ class Meter {
         //this.dom.appendChild(popup);
         
         this.Update();
-        this.Redraw()
 
 		console.log( "Meter %s pos:",name );
 		console.log( " X="+ JSON.stringify(this.config.x));
@@ -121,6 +119,8 @@ class Meter {
     // This is called by timer
 	Update(){
         //this.dom.innerText="###"+this.name+"###";
+        Redraw();
+        this.next_update = now+parent.config.update*this.config.updatedivider;
     }
     // Recalculate component location and size
     Redraw(){
@@ -132,15 +132,15 @@ class Meter {
 		console.log( ".sh="+ JSON.stringify(this.sh));
 		*/
 		// Recalculate drawing location and if different, update the DOM
-		if( previous) {
-			console.log( ".Using previous "+ JSON.stringify(previous));
-			// Draw relative to previous
+		if( Previous_Meter ) {
+			console.log( ".Using Previous_Meter "+ JSON.stringify(Previous_Meter));
+			// Draw relative to Previous_Meter
 			switch( this.config.x[1] ){
-			case 'r':	//Relative to left of previous
-				this.xpos = previous.x+this.config.x[0];			
+			case 'r':	//Relative to left of Previous_Meter
+				this.xpos = Previous_Meter.x+this.config.x[0];			
 				break;
-			case 'R':	//Relative to right of previous
-				this.xpos = previous.x+previous.w+this.config.x[0];
+			case 'R':	//Relative to right of Previous_Meter
+				this.xpos = Previous_Meter.x+Previous_Meter.w+this.config.x[0];
 				break;
 			default:
 				//this.xpos = this.parent.config.windowx+this.config.x[0];
@@ -148,11 +148,11 @@ class Meter {
 			};
 			//console.log( ". X="+this.xpos+","+this.config.x );
 			switch( this.config.y[1]){
-			case 'r':	//Relative to left of previous
-				this.ypos = previous.y+this.config.y[0];			
+			case 'r':	//Relative to left of Previous_Meter
+				this.ypos = Previous_Meter.y+this.config.y[0];			
 				break;
-			case 'R':	//Relative to right of previous
-				this.ypos = previous.y+previous.h+this.config.y[0];
+			case 'R':	//Relative to right of Previous_Meter
+				this.ypos = Previous_Meter.y+Previous_Meter.h+this.config.y[0];
 				break;
 			default:
 				//this.ypos = this.parent.config.windowy+this.config.y[0];
@@ -181,8 +181,8 @@ class Meter {
 		this.width += this.config.padding.left+this.config.padding.right;
 		this.height += this.config.padding.top+this.config.padding.bottom; 
         
-        // Save the location into 'previous'
-		previous = {x:this.xpos,y:this.ypos,w:this.width||0,h:this.height||0};
+        // Save the location into 'Previous_Meter'
+		Previous_Meter = {x:this.xpos,y:this.ypos,w:this.width||0,h:this.height||0};
 		// Update DOM
 		this.dom.style.left = this.xpos+"px";
 		this.dom.style.top = this.ypos+"px";
