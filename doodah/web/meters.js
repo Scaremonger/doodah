@@ -31,6 +31,10 @@
  * Consider making popups an option in the meter
  */
 
+//var ERROR_SKIN = {doodah:(xyz:""},error:{meter:"string",text:"Bad Skin"}};
+var ERROR_METER = {meter:"string",text:"ERROR"};
+
+// METER FACTORY
 function CreateMeter( meter_name, meter_config, parent ){
     var metertype = meter_config.meter.toLowerCase(); 
     var meter;
@@ -45,11 +49,19 @@ function CreateMeter( meter_name, meter_config, parent ){
         return meter;
         break;
     default:
+        // Unknown Meter Type, so create a STRING meter to show an error instead.
         console.log("# Unknown meter type "+metertype);
         var meter = new Meter_Error( parent, meter_name, "<br>Invalid meter type '"+metertype+"' in meter '"+meter_name+"'" );
+        /*
+         * var config = ERROR_METER;
+        config.name = meter_name;
+        if( meter_config.x ) config.x = meter_config.x;
+        if( meter_config.y ) config.y = meter_config.y;
+        config.text="Meter: '"+meter_name+"'<br>Invalid meter type '"+metertype+"'";
+        var meter = new Meter_String( parent, meter_name, config );
         console.log("  Meter_Error created");
         //parent.meters[meter_name] = meter;
-        
+        */
         //AllMeters[name+"."+section_name]=meter;
         return meter;
         break;
@@ -118,12 +130,6 @@ class Meter {
     // Update the meter (With new value if required)
     // This is called by timer
 	Update(){
-        //this.dom.innerText="###"+this.name+"###";
-        Redraw();
-        this.next_update = now+parent.config.update*this.config.updatedivider;
-    }
-    // Recalculate component location and size
-    Redraw(){
 		console.log( "Calc pos of '%s'.",this.name);
 		/*
 		console.log( ".sx="+ JSON.stringify(this.sx));
@@ -137,10 +143,10 @@ class Meter {
 			// Draw relative to Previous_Meter
 			switch( this.config.x[1] ){
 			case 'r':	//Relative to left of Previous_Meter
-				this.xpos = Previous_Meter.x+this.config.x[0];			
+				this.xpos = Previous_Meter.xpos+this.config.x[0];			
 				break;
 			case 'R':	//Relative to right of Previous_Meter
-				this.xpos = Previous_Meter.x+Previous_Meter.w+this.config.x[0];
+				this.xpos = Previous_Meter.xpos+Previous_Meter.width+this.config.x[0];
 				break;
 			default:
 				//this.xpos = this.parent.config.windowx+this.config.x[0];
@@ -149,10 +155,10 @@ class Meter {
 			//console.log( ". X="+this.xpos+","+this.config.x );
 			switch( this.config.y[1]){
 			case 'r':	//Relative to left of Previous_Meter
-				this.ypos = Previous_Meter.y+this.config.y[0];			
+				this.ypos = Previous_Meter.ypos+this.config.y[0];			
 				break;
 			case 'R':	//Relative to right of Previous_Meter
-				this.ypos = Previous_Meter.y+Previous_Meter.h+this.config.y[0];
+				this.ypos = Previous_Meter.ypos+Previous_Meter.height+this.config.y[0];
 				break;
 			default:
 				//this.ypos = this.parent.config.windowy+this.config.y[0];
@@ -168,12 +174,6 @@ class Meter {
 			this.xpos = this.config.x[0];
 			this.ypos = this.config.y[0];
 		}
-		console.log( ".X="+this.xpos+" ("+this.config.x+")" );
-		console.log( ".Y="+this.ypos+" ("+this.config.y+")" );
-		console.log( ".W="+this.width+" ("+this.config.w+")" );
-		console.log( ".H="+this.height+" ("+this.config.h+")" );
-//		this.width = this.sw[0];
-//		this.height = this.sh[0];
         
         // Get size including padding...
 		this.width = this.dom.clientWidth;
@@ -190,6 +190,9 @@ class Meter {
 		this.dom.style.paddingRight = this.config.padding.right+"px";
 		this.dom.style.paddingBottom = this.config.padding.bottom+"px";
 		this.dom.style.paddingLeft = this.config.padding.left+"px";
+        
+        // Set next update duration
+        this.next_update = now+parent.config.update*this.config.updatedivider;
 	}
 }
 

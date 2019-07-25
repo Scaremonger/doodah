@@ -2,10 +2,11 @@
 ## VERSION 0.0.1
 ## (c) Copyright Si Dunford, July 2019
 ##
-import paho.mqtt.client as paho_mqtt
 import os,sys
 #import json
 import configparser
+import logging
+import traceback
 
 # RESTFUL.py
 # REST API
@@ -35,7 +36,7 @@ from flask import render_template
 ##from flask_httpauth import HTTPBasicAuth
 from pathlib import Path
 
-
+logger = logging.getLogger("Doodah")
 app = Flask(__name__, static_folder='web', template_folder='web')
 ##auth = HTTPBasicAuth()
 home = str(Path.home())
@@ -326,5 +327,15 @@ def delete_task(task_id):
 """
 
 if __name__ == '__main__':
-    app.run(debug = True)
-	
+    if "DEBUG" in os.environ:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+    try:
+        app.run(debug = True)
+    except Exception:
+        traceback.print_exc(file=sys.stdout)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        sys.exit(1)
+        

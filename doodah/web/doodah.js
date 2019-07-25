@@ -11,7 +11,9 @@ THINGS TO DO NEXT
 -----------------
 1 of the three SKINS has dissapeared while adding Previous_Skin and Previous_Meter
     Simple image does not exist, so thats to be expected (although there should be a err skin)
-    text is gone? why?
+    text card is gone? why?
+DYNAMIC SIZE HAS NO WIDTH AND HEIGHT, THIS CAUSES PREVIOUS_SKIN.HEIGHT TO BE ZERO WHEN CALCULATING LOCATION.
+
 Layout manager:
 * Use Previous_Skin and Previous_Meter variables (instead of just previous) when adding them. 
 * previous_meter, should be Previous_Meter
@@ -136,7 +138,21 @@ class Layout {
             var skin_file = section.replace("\\","/");
             var skin_name = section_lower.replace("\\","/");
             //get_skin( parent, skin_file, skin_name, config[section] );
-            this.request_skin( skin_file, skin_name, config[section] );
+
+            // Create a Debugging card
+            var debug= document.getElementById("debugger");
+            var div= document.createElement('div');
+            div.setAttribute("id", "card_"+skin_name);
+            div.className='card';
+            debug.appendChild(div);
+            div.innerText = skin_name;
+
+            // Create a new skin
+            var skin = new Skin( skin_name, config[section], this );
+            Skins[ skin_name ] = skin;
+
+            // Request the skin content
+            this.request_skin( skin, skin_file, skin_name, config[section] );
         }
         
         // Start System Timer
@@ -144,10 +160,11 @@ class Layout {
             this.Update( Date.now() );
 		}.bind(this),100);      
     }
-    request_skin( skin_file, skin_name, config ) {
+    request_skin( skin, skin_file, skin_name, config ) {
         // Create a request
         var server = new XMLHttpRequest();
         // Save some variables that we will need later:
+        server.skin = skin;
         server.skin_config = config;
         server.skin_name = skin_name;
         server.skin_parent = this;
@@ -180,16 +197,16 @@ class Layout {
                         //layout = 
                         //console.log( "CREATING SKIN "+skin_name );
                         var ini = parseINIString( response.ini );
-                        var skin = new Skin( server.skin_parent, skin_name, ini, server.skin_config );
+                        //var skin = new Skin( server.skin_parent, skin_name, ini, server.skin_config );
                         //console.log( "  Skin created");
-                        
-                        // DEBUGGING
-                        if(skin) {
-                            showcard( skin, ini );
-                            Skins[skin_name] = skin;
-                        } else {
-                            console.log( "$ Invalid skin");
-                        }
+                        server.skin.initialise( ini );
+                        // 
+                        //if(skin) {
+                            // Save sking in list
+                            // Skins[skin_name] = skin;
+                        //} else {
+                        //    console.log( "$ Invalid skin");
+                        //}
                         /*
                         //console.log( "INI:" );
                         //console.log( response.ini );
@@ -244,21 +261,35 @@ class Layout {
     }
 }
 
+/* A skin is a section of the display tht displays information (Meters)
+ * based on static or dynamic (Measures) content.
+ */
 class Skin {
-    constructor( parent, skin_name, skin_config, layout_config ){
+    // Creates a basic Skin object ready to be loaded from disk
+    constructor( skin_name, layout_config ){
         console.log( "  new Skin( '"+skin_name+"' )" );
+        
         this.name = skin_name;
         this.config = {};
         this.meters = {};
         this.measures = {};
         this.variables = {};
         this.meta = {};
+
+        // Control fields
         this.next_update = 0;
+        this.has_loaded = false;    // Used to identify skins with load errors.
 
         // Read config from LAYOUT config
 		this.config.windowx = ExtractNumber( layout_config, 'windowx', -1 );
 		this.config.windowy = ExtractNumber( layout_config, 'windowy', -1 );
 
+        // Default settings (Used if skin load fails
+        this.config.update = 1000;
+        this.config.dynamicwindowsize = 0;      
+        this.config.skinwidth=50;
+        this.config.skinheight=50;
+        
         // Read config from SKIN config
 		//this.config.dynamicwindowsize = ExtractNumber( skin_config, 'dynamicwindowsize', 0 );
 		//this.config.skinwidth = ExtractNumber( skin_config, 'skinwidth', 100 );
@@ -276,8 +307,13 @@ class Skin {
         popup.className='tooltiptext';
         this.dom.appendChild(popup);
         
+        // Create Debug "Card"
+        showcard( skin_name, this );
         // Parse the SKIN Config
-
+    }
+    
+    // Initislise skin with content configuration file
+    initialise( skin_config ) {
         //console.log("  Loading skin config");
         //console.log(skin_config);
         for (var section in skin_config ){
@@ -339,7 +375,8 @@ class Skin {
                 }
             // Meters, Measures or Variables etc...
             }
-
+            this.has_loaded = true;     // Mark skin as Loaded
+            
             // Update the skin
             //console.log( "Calling update");
             //this.Update();
@@ -377,6 +414,19 @@ class Skin {
     // Function called every "UPDATE" milliseconds
     Update(now=0){
         console.log( "UPDATING SKIN: "+this.name );
+        
+        // Reposition the skin at either its defined position or 
+        // Below the previous skin
+        if( Previous_Skin===undefined ) {
+            this.xpos = ( (this.config.windowx==-1) ? 0 : this.config.windowx );
+            this.ypos = ( (this.config.windowy==-1) ? 0 : this.config.windowy );
+        } else {
+            this.xpos = ( (this.config.windowx==-1) ? Previous_Skin.xpos : this.config.windowx );
+            this.ypos = ( (this.config.windowy==-1) ? Previous_Skin.ypos+Previous_Skin.height : this.config.windowy );
+        }
+        this.dom.style.left = this.xpos+"px";
+		this.dom.style.top = this.ypos+"px";
+        
         // Update all Measures
         console.log( "> Updating measures...");
         for( var measure_name in this.measures ){
@@ -394,25 +444,57 @@ class Skin {
         }
         console.log( "> finished update");
         
-        // If DOM has not fixed abode, position it next to the last skin.
+        /*
+        // If DOM has no fixed abode, position it next to the last skin.
         if( this.config.windowx==-1 ) {
-            if( PreviousSkin===undefined) {
+            if( Previous_Skin===undefined) {
                 this.xpos = 0;
             } else {
-                this.xpos = Previous_Skin.config.windowx + Previous_Skin.width;
+                this.xpos = Previous_Skin.config.windowx;
             }
         }
         if( this.config.windowy==-1 ) {
-            if( PreviousSkin===undefined) {
+            console.log( "ADJUSTING Y POSITION" );
+            if( Previous_Skin===undefined) {
+                console.log( "  Previous_Skin is undefined");
                 this.ypos = 0;
             } else {
+                console.log( "  Previous skin is "+Previous_Skin.name+", "+ Previous_Skin.height);
                 this.ypos = Previous_Skin.config.windowy + Previous_Skin.height;
             }
         }
-        // Skin DOM location
-        this.dom.style.left = this.xpos+"px";
-		this.dom.style.top = this.ypos+"px";
-            
+        */
+        
+        // Skin resize to fit meters?
+        if( this.config.dynamicwindowsize==1 ) {
+            console.log( "  ! Dynamic sizing configured" );
+            // Calculate size of skin based on meters
+    ** JUST ABOUT TO REWRITE THIS **
+    ** NEED TO INCLUDE PADDINGMARGINS and X/Y position and not just width/height **
+    
+    // Calculate size of skin based on meters
+            this.width = 0;
+            this.height = 0;
+            for( var meter_name in this.meters ){
+                //console.log( "    "+meter_name );
+                var meter = this.meters[meter_name]
+                this.width = Math.max( this.width, meter.xpos+meter.width );
+                this.height = Math.max( this.height, meter.ypos+meter.height );
+                console.log( "    METER: "+meter_name+": X="+meter.xpos+", Y="+meter.ypos+", W="+meter.width+", H="+meter.height );
+            }
+            // Update DOM size
+        } else {
+            // Skin has a static size, but if smaller than 4x4 then we will reset it to 50x50
+            this.height = this.config.skinheight;
+            this.width = this.config.skinwidth;
+            if( this.height <5 ) this.height = 50;
+            if( this.width <5 _ this.width = 50;
+        }
+        // Update DOM size
+        this.dom.style.width = this.width+"px";
+        this.dom.style.height = this.height+"px";            
+        
+        /*
         // Skin resize to fit meters?
         if( this.config.dynamicwindowsize==1 ) {
             console.log( "  ! Dynamic sizing configured" );
@@ -422,17 +504,22 @@ class Skin {
             for( var meter_name in this.meters ){
                 //console.log( "    "+meter_name );
                 var meter = this.meters[meter_name]
-                this.width = Math.max( this.width, meter.width );
-                this.height = Math.max( this.height, meter.height );
-                console.log( "    METER: "+meter_name+": sX="+meter.xpos+", Y="+meter.ypos+", W="+meter.width+", H="+meter.height );
+                this.width = Math.max( this.width, meter.xpos+meter.width );
+                this.height = Math.max( this.height, meter.ypos+meter.height );
+                console.log( "    METER: "+meter_name+": X="+meter.xpos+", Y="+meter.ypos+", W="+meter.width+", H="+meter.height );
             }
             // Update DOM size
             this.dom.style.width = this.width+"px";
             this.dom.style.height = this.height+"px";
+        } else {
+            this.width = this.config.skinwidth;
+            this.height = this.config.skinheight;
         }
+        */
         console.log( "  SKIN SIZE: X="+this.xpos+", Y="+this.ypos+", W="+this.width+", H="+this.height );
         
         // 
+        showcard( this.name, this );
         
         // Next update
         this.next_update = now+this.config.update;
@@ -587,6 +674,14 @@ function dumpvar( obj, depth=0) {
             html += dumpvar( obj[item], depth+1 );
             html += indent+"}<br>";
   //          break;
+        case "boolean":
+            html += indent+item+":BOOL=";
+            if( obj[item]===true ){
+                html += "TRUE<br>";
+            } else {
+                html += "FALSE<br>";
+            }
+            break;
         case "function":
             // Not interested in listing these
             break;
@@ -597,19 +692,10 @@ function dumpvar( obj, depth=0) {
     return html;
 }
 
-function showcard( obj, data={} ){
-    var debug= document.getElementById("debugger");
-    var div= document.createElement('div');
-	div.className='card';
-    
+function showcard( skin_name, obj ){
+    var div= document.getElementById("card_"+skin_name);
     var html = dumpvar( obj );
-    //return;
-   // THE ERROR IS HERE
-    //IT WILL NOT STRINGIFY A FULL OBJECT
     div.innerHTML="<pre>"+html+"</pre>";
-//    div.innerHTML="OBJECT:<br>"+JSON.stringify( obj );
-//    div.innerHTML+="<br>DATA:<br>"+JSON.stringify( data );
-    debug.appendChild(div);
 }
 
 // Start the launcher
