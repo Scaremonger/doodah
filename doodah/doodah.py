@@ -1,5 +1,5 @@
 ## DOODAH WEB SERVICE
-## VERSION 0.0.1
+## VERSION 0.1.0
 ## (c) Copyright Si Dunford, July 2019
 ##
 import os,sys
@@ -162,69 +162,8 @@ def serve_layout( name ):
     print( "SERVING LAYOUT:", filepath )
     if not filepath.is_file():
         abort(404)
-    ##skins = { 
-    ##    'title':"name",
-    ##    'skins':{'skins':"var thisisatest=1;" }
-    ## }
-    layout = configparser.RawConfigParser()
-    
-    ## Open Layout file
-    try:
-        layout.read(filepath)
-    except( DuplicateOptionError, DuplicateSectionError) as e:
-        print('Duplicate Option/Section in file [%s] !', e)
         
-    preload = {
-        'skins':{}
-        }
-    
-    ## Parse all sections, importing the skins
-    for skin in layout.sections():
-        ## Standardise the path separator
-        skin = skin.replace("\\","/")
-        ## Open skin
-        ##print("")
-        ##print("["+skin+"]")
-        ##print(os.path.split(skin))
-        ##print(os.path.basename(skin))
-        ##print(skin.split("/"))
-        skin_path=os.path.split(skin)
-        if skin_path[0]==os.path.basename(skin):
-            config_name=skin_path[0]
-            skin_file=skin_path[0]
-        else:
-            config_name=skin_path[0]+"/"+skin_path[1]
-            skin_file=skin_path[1]
-        print( config_name )
-        print( ".File:"+skin_file)
-        skin_path = Path( home+"/doodah/"+config_name+"/"+skin_file+".ini" )
-        print( ".location:"+str(skin_path))
-        preload['skins'][config_name]={}
-        if not skin_path.is_file():
-            print( "ERROR:",skin_path,"is not found" )
-            preload['skins'][config_name]["Missing Skin"]={}
-            preload['skins'][config_name]["Missing Skin"]['meter']="string"
-            preload['skins'][config_name]["Missing Skin"]['text']="Missing Skin: "+config_name
-        else:
-            config = configparser.RawConfigParser()
-            try:
-                layout.read(filepath)
-                config.read( skin_path )
-                ##preload.skins[config_name]={}
-                for section in config.sections():
-                    #print( "["+section+"]" )
-                    preload['skins'][config_name][section]={}
-                    #for key in config.items(section):
-                    for key in config.options(section):
-                        value = config.get(section,key)
-                        #print( key + "=="+value )
-                        preload['skins'][config_name][section][key]=value
-            except( DuplicateOptionError ) as e:
-                print('Duplicate Option in file [%s] !', e)
-            except( DuplicateSectionError) as e:
-                print('Duplicate Section in file [%s] !', e)
-            
-    return render_template('doodah.html', title=name, preload='')
+    return render_template('doodah.html', title=name)
     #reformat_preload(preload))
     ##preload=json.dumps(skins))
     ## dict = json.loads(input)

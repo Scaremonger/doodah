@@ -1,62 +1,17 @@
 // DOODAH JAVASCRIPT LIBRARY
 // (c) Copyright Si Dunford, July 2019
+//
 // VERSION 0.0.1, Pre-Release, Not suitable for production
 
 /* CHANGE LOG:
  * 0.0.1    01 JUL 19   Initial build.
  * 0.0.2    20 JUL 19   Split Meter into own file
  * 0.0.3    23 JUL 19   Added update/updatedivider and system timer
+ * 0.1.0    26 JUL 19   Finished basic framework
+ * 0.1.1    28 JUL 19   Added ExtractColor() to support all formats
 
-THINGS TO DO NEXT
------------------
-1 of the three SKINS has dissapeared while adding Previous_Skin and Previous_Meter
-    Simple image does not exist, so thats to be expected (although there should be a err skin)
-    text card is gone? why?
-DYNAMIC SIZE HAS NO WIDTH AND HEIGHT, THIS CAUSES PREVIOUS_SKIN.HEIGHT TO BE ZERO WHEN CALCULATING LOCATION.
-
-Layout manager:
-* Use Previous_Skin and Previous_Meter variables (instead of just previous) when adding them. 
-* previous_meter, should be Previous_Meter
-* New Skin should NULL the Previous Meter
-* padding (and margins if rainmeter has them)
-Basic config:
-* colours of text, background, border for skin AND meters
-* font size and face
-
-VERSION 0.0.2
-Loading errors:
-* When SKIN fails to load, or fails to parse, create an ERROR skin containing an error meter with it's SIZE and POSITION
-* When METER fails to load or initialise, a METER_STRING should be added with formatting NOT A METER_ERROR TYPE
-    meter=string 
-    text=Meter 'NAME' failed to initialise
-    dynamicwindowsize=1
-    Should set border, background and text colour/size/font
-* Replace console.log with "log()" which only displays text when DEBUG=TRUE
-* Add IMAGE meter, which loads an image
-* Add variable substitution
-
-Known Bugs:
------------
-* HTML file contains static skins, meters and test code. Remove it!
-
-Debugging code:
-* Add variable DEBUG=TRUE/FALSE, only show debugging code when TRUE
-* Remove popup and tooltip code and CSS
-* Remove CARD and DEBUGGING code and CSS
-* Green/Red dotted borders around skin and meters in CSS
-
-OUTSTANDING
-===========
-
-Preload functions:
-	Need to also allow variables in here, not just correct values
-	So SolidColor=F6DDCC or Solidcolor=#FGCOL# should both be allowed
-	or what about X=#SOMEWHERE#+23
-	* ExtractString( definition, key, default )
-	* ExtractNumber( definition, key, default ) 	- DONE
-	* ExtractPosition( definition, key, default )	- DONE
-	* ExtractColor( definition, key, default )		- RRR,GGG,BBB[,AAA] / RRGGBB[AA] etc
-	* ExtractPadding( definition, key, default )	- l,t,r,b (NOTE DIFFERENCE WITH CSS)
+BUG: CreateELement() cannot have spaces, slashes or period, yet replace seems to fail!
+ 
 
 VARIABLES:
 (Including;
@@ -142,7 +97,7 @@ class Layout {
             // Create a Debugging card
             var debug= document.getElementById("debugger");
             var div= document.createElement('div');
-            div.setAttribute("id", "card_"+skin_name);
+            div.setAttribute("id", ("card_"+skin_name).replace(/\.|%s|\\/g,"_") );
             div.className='card';
             debug.appendChild(div);
             div.innerText = skin_name;
@@ -156,9 +111,9 @@ class Layout {
         }
         
         // Start System Timer
-		this.timer = setInterval( function(){
-            this.Update( Date.now() );
-		}.bind(this),100);      
+		//this.timer = setInterval( function(){
+        //    this.Update( Date.now() );
+		//}.bind(this),100);      
     }
     request_skin( skin, skin_file, skin_name, config ) {
         // Create a request
@@ -238,6 +193,7 @@ class Layout {
                     }
                 } catch(e) {
                     console.log( "Failed to parse JSON response: "+e );
+                    console.trace();
                 }
                 break;
             default:
@@ -289,7 +245,7 @@ class Skin {
         this.config.dynamicwindowsize = 0;      
         this.config.skinwidth=50;
         this.config.skinheight=50;
-        
+                
         // Read config from SKIN config
 		//this.config.dynamicwindowsize = ExtractNumber( skin_config, 'dynamicwindowsize', 0 );
 		//this.config.skinwidth = ExtractNumber( skin_config, 'skinwidth', 100 );
@@ -297,7 +253,7 @@ class Skin {
 
         // CREATE DOM OBJECT (DIV) FOR SKIN
 		this.dom = document.createElement('div');
-		this.dom.setAttribute("id", "skin."+this.name);
+		this.dom.setAttribute("id", ("skin."+this.name).replace(/\.|%s|\\/g,"_") );
 		this.dom.className='skin';
 		document.body.appendChild(this.dom);
         
@@ -336,6 +292,28 @@ class Skin {
                 this.config.dynamicwindowsize = ExtractNumber( skin_config[section], 'dynamicwindowsize', 0 );
                 this.config.skinwidth = ExtractNumber( skin_config[section], 'skinwidth', 100 );
                 this.config.skinheight = ExtractNumber( skin_config[section], 'skinheight', 30 );
+                //
+                this.config.background= ExtractText( skin_config[section], 'background', "" );
+                this.config.backgroundmode = ExtractNumber( skin_config[section], 'backgroundmode', 1 );
+                this.config.solidcolor = ExtractColor( skin_config[section], 'solidcolor', undefined );
+                this.config.solidcolor2 = ExtractColor( skin_config[section], 'solidcolor2', undefined );
+                this.config.gradientangle = ExtractNumber( skin_config[section], 'gradientangle', 90 );
+                
+                //https://www.w3schools.com/css/css3_gradients.asp
+                
+                // Does skin have it's own stylesheet?
+                if( skin_config[section]['stylesheet'] ) {
+                    console.log( "LOADING STYLESHEET: "+skin_config[section]['stylesheet'] );
+                    // Add LINK into header
+                    var head = document.getElementsByTagName('head')[0];  
+                    var link = document.createElement('link'); 
+                    link.rel = 'stylesheet';  
+                    link.type = 'text/css'; 
+                    link.href = this.name+"/"+skin_config[section]['stylesheet'];  
+                    head.appendChild(link);
+                } else {
+                    console.log("NO STYLESHEET");
+                }
                 break;
             case 'metadata':
                 this.Meta = skin_config[section];
@@ -399,24 +377,16 @@ class Skin {
         if( this.config.dynamicwindowsize==0 ) {
             this.dom.classList.add("dynamicwindowsize0");
         }
-        this.Update();
-        
-        
-        // Start Self-timer for the skin.
-		/*
-         * this.timer = setInterval( function(){
-			console.log("tick, "+this.name);
-            this.Update();
-		}.bind(this),this.config.update);
-		*/
+        this.Update(0);
     }
 	
     // Function called every "UPDATE" milliseconds
-    Update(now=0){
+    Update(now){
         console.log( "UPDATING SKIN: "+this.name );
         
         // Reposition the skin at either its defined position or 
         // Below the previous skin
+        /*
         if( Previous_Skin===undefined ) {
             this.xpos = ( (this.config.windowx==-1) ? 0 : this.config.windowx );
             this.ypos = ( (this.config.windowy==-1) ? 0 : this.config.windowy );
@@ -424,6 +394,7 @@ class Skin {
             this.xpos = ( (this.config.windowx==-1) ? Previous_Skin.xpos : this.config.windowx );
             this.ypos = ( (this.config.windowy==-1) ? Previous_Skin.ypos+Previous_Skin.height : this.config.windowy );
         }
+        */
         this.dom.style.left = this.xpos+"px";
 		this.dom.style.top = this.ypos+"px";
         
@@ -439,8 +410,9 @@ class Skin {
         console.log( "> Updating meters...");
         for( var meter_name in this.meters ){
             var meter = this.meters[meter_name];
-            //console.log( "  Meter "+JSON.stringify( meter));
-            if( meter.next_update<now ) meter.Update( now );
+            console.log( "  Meter: "+meter_name );
+            //if( meter.next_update<now ) 
+            meter.update( 0 );
         }
         console.log( "> finished update");
         
@@ -465,14 +437,11 @@ class Skin {
         }
         */
         
-        // Skin resize to fit meters?
+        // Resize dynamic skins
         if( this.config.dynamicwindowsize==1 ) {
             console.log( "  ! Dynamic sizing configured" );
-            // Calculate size of skin based on meters
-    ** JUST ABOUT TO REWRITE THIS **
-    ** NEED TO INCLUDE PADDINGMARGINS and X/Y position and not just width/height **
     
-    // Calculate size of skin based on meters
+            // Calculate size of skin based on meters
             this.width = 0;
             this.height = 0;
             for( var meter_name in this.meters ){
@@ -483,12 +452,12 @@ class Skin {
                 console.log( "    METER: "+meter_name+": X="+meter.xpos+", Y="+meter.ypos+", W="+meter.width+", H="+meter.height );
             }
             // Update DOM size
-        } else {
+        //} else {
             // Skin has a static size, but if smaller than 4x4 then we will reset it to 50x50
-            this.height = this.config.skinheight;
-            this.width = this.config.skinwidth;
-            if( this.height <5 ) this.height = 50;
-            if( this.width <5 _ this.width = 50;
+            //this.height = this.config.skinheight;
+            //this.width = this.config.skinwidth;
+            //if( this.height <5 ) this.height = 50;
+            //if( this.width <5 _ this.width = 50;
         }
         // Update DOM size
         this.dom.style.width = this.width+"px";
@@ -562,10 +531,73 @@ function ExtractText( definition, variable, otherwise ){
 	if(definition&&definition[variable]) return definition[variable];
     return otherwise;
 }
+/* Colour formats supported:
+ * Decimal type "RRR,GGG,BBB,AAA"    (Alpha is optional)
+ * Hexadecimal types "RRGGBBAA" or, "#RRGGBBAA"    (Alpha is optional)
+ * Hexadecimal types "RGBA", "#RGBA"    (Alpha is optional)
+ */
+function ExtractColor( definition, variable, otherwise ){
+    if(!definition||!definition[variable]) return otherwise;
+    console.log( "ExtractColor( "+definition[variable]+" );" );
+    var str = definition[variable].toString();
+    // Check for RRR,GGG,BBB,AAA (Alpha optional)
+    re = /(\d{1,3}),(\d{1,3}),(\d{1,3})([,\d{1,3}])?/
+	var found = str.match(re);
+    if(found) {
+        console.log( "  NUMBERS:"+found.length);
+        var result = {}
+        result['color']=parseInt(found[0]);
+        result['red']=parseInt(found[1]);
+        result['green']=parseInt(found[2]);
+        result['blue']=parseInt(found[3]);
+        result['alpha']=255;
+        if( found[4]) {
+            // Four digit colour includes Alpha
+            result['alpha']=parseInt(found[4]);
+        } else {
+            // Three digit colour Alpha
+            result['color']=(result['color']<<8)||0xff;
+        }
+        return result;
+    }
+    // Check for RRGGBBAA (Alpha optional)
+    re = /#?([a-fA-F0-9]{2})([a-fA-F0-9]{2})([a-fA-F0-9]{2})([a-fA-F0-9]{2})?/
+	var found = str.match(re);
+    if(found) {
+        //console.log( "  DOUBLEHEX:"+found.length);
+        //console.log( "  "+found );
+        if(found[4]) console.log( "FOUR" );
+        if(found[4]==='' ) console.log("EMPTY");
+        var result = {}
+        result['color']=parseInt("0x"+found[0]);
+        result['red']=parseInt("0x"+found[1]);
+        result['green']=parseInt("0x"+found[2]);
+        result['blue']=parseInt("0x"+found[3]);
+        result['alpha']=255;
+        if(found[4]) result['alpha']=parseInt("0x"+found[4]);
+        return result;
+    }
+    // Check for RRGGBBAA (Alpha optional)
+    re = /#?([a-fA-F0-9])([a-fA-F0-9])([a-fA-F0-9])([a-fA-F0-9])?/
+	var found = str.match(re);
+    if(found) {
+        console.log( "  HEX:"+found.length);
+        var result = {}
+        result['color']=parseInt("0x"+found[0]);
+        result['red']=parseInt("0x"+found[1]);
+        result['green']=parseInt("0x"+found[2]);
+        result['blue']=parseInt("0x"+found[3]);
+        result['alpha']=255;
+        if(found[4]) result['alpha']=parseInt("0x"+found[4]);
+        return result;
+    }
+    return otherwise;
+}
 
 // ========================================
 function get_layout(name) {
     var doodah_server = new XMLHttpRequest();
+	doodah_server.layout_name = name;
 	doodah_server.open( "GET", "$Layout="+name, true);
     doodah_server.onreadystatechange = function() {
         xhttp = this;
@@ -592,12 +624,17 @@ function get_layout(name) {
     //				local.setState( 3 );
     //				local.message="Failed to parse JSON response<br>"+e.name+"<br>"+HTMLProtect(xhttp.responseText);
                     console.log( "Failed to parse JSON response: "+e.name );
+                    console.trace();
                 }
              } else if( xhttp.status==0 ) {
                 console.log( "Resource cannot be initialised." );
-            } else {
-                console.log( "Status:"+xhttp.status+" ("+xhttp.statusText+")" );
-                //console.log( HTMLProtect(xhttp.responseText) );
+            } else {                
+                // CREATE LOADING ERROR CONTENT
+                var div = document.createElement('div');
+                div.setAttribute("id", "html404");
+                div.innerHTML = "Layout file '"+this.layout_name+"' not found.<br>Error code 404."
+                document.body.appendChild(div);
+                //console.log( "Status:"+xhttp.status+" ("+xhttp.statusText+")" );
             }
         }
     };
@@ -670,10 +707,10 @@ function dumpvar( obj, depth=0) {
             html += indent+item+":NUM="+obj[item].toString()+"<br>";
             break;
         case "object":
-            html += indent+item+": {<br>";
+            html += indent+item+"("+Object.keys( obj[item] ).length+"): {<br>";
             html += dumpvar( obj[item], depth+1 );
             html += indent+"}<br>";
-  //          break;
+            break;
         case "boolean":
             html += indent+item+":BOOL=";
             if( obj[item]===true ){
@@ -709,3 +746,5 @@ window.onload = function(){
     get_layout( layout );
     
 }
+
+

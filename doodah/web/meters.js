@@ -4,7 +4,7 @@
 
 /* CHANGE LOG:
  * V0.0.1	20 JUL 19, Split out from doodah.js
- * V0.0.2   20 JUL 19  Added: Meter_Error
+ * 
  */
 
 /* RAINMETER COMPONENTS:
@@ -32,7 +32,7 @@
  */
 
 //var ERROR_SKIN = {doodah:(xyz:""},error:{meter:"string",text:"Bad Skin"}};
-var ERROR_METER = {meter:"string",text:"ERROR"};
+//var ERROR_METER = {meter:"string",text:"ERROR"};
 
 // METER FACTORY
 function CreateMeter( meter_name, meter_config, parent ){
@@ -51,7 +51,7 @@ function CreateMeter( meter_name, meter_config, parent ){
     default:
         // Unknown Meter Type, so create a STRING meter to show an error instead.
         console.log("# Unknown meter type "+metertype);
-        var meter = new Meter_Error( parent, meter_name, "<br>Invalid meter type '"+metertype+"' in meter '"+meter_name+"'" );
+        //var meter = new Meter_Error( parent, meter_name, "<br>Invalid meter type '"+metertype+"' in meter '"+meter_name+"'" );
         /*
          * var config = ERROR_METER;
         config.name = meter_name;
@@ -94,8 +94,8 @@ class Meter {
 		this.config.text = ExtractText( meter_config, 'text', '' );
         
         // Calculated position and size:
-        this.xpos = 0;
-        this.ypos = 0;
+        this.xpos = -1;     // -1 forces reposition on first update
+        this.ypos = -1;     // -1 forces reposition on first update
         this.width = 0;
         this.height = 0;
 		
@@ -129,60 +129,50 @@ class Meter {
 	}
     // Update the meter (With new value if required)
     // This is called by timer
-	Update(){
-		console.log( "Calc pos of '%s'.",this.name);
-		/*
-		console.log( ".sx="+ JSON.stringify(this.sx));
-		console.log( ".sy="+ JSON.stringify(this.sy));
-		console.log( ".sw="+ JSON.stringify(this.sw));
-		console.log( ".sh="+ JSON.stringify(this.sh));
-		*/
+	update(now){
+		console.log( "Calc pos of "+this.name);
 		// Recalculate drawing location and if different, update the DOM
-		if( Previous_Meter ) {
-			console.log( ".Using Previous_Meter "+ JSON.stringify(Previous_Meter));
-			// Draw relative to Previous_Meter
-			switch( this.config.x[1] ){
-			case 'r':	//Relative to left of Previous_Meter
-				this.xpos = Previous_Meter.xpos+this.config.x[0];			
-				break;
-			case 'R':	//Relative to right of Previous_Meter
-				this.xpos = Previous_Meter.xpos+Previous_Meter.width+this.config.x[0];
-				break;
-			default:
-				//this.xpos = this.parent.config.windowx+this.config.x[0];
-				this.xpos = this.config.x[0];
-			};
-			//console.log( ". X="+this.xpos+","+this.config.x );
-			switch( this.config.y[1]){
-			case 'r':	//Relative to left of Previous_Meter
-				this.ypos = Previous_Meter.ypos+this.config.y[0];			
-				break;
-			case 'R':	//Relative to right of Previous_Meter
-				this.ypos = Previous_Meter.ypos+Previous_Meter.height+this.config.y[0];
-				break;
-			default:
-				//this.ypos = this.parent.config.windowy+this.config.y[0];
-				this.ypos = this.config.y[0];
-			}
-//			this.width = 10;
-//			this.height = 10;
-		} else {
+		if( Previous_Meter===undefined ) {
 			console.log( ".Using parent");
-			// First item drawn is relative to parent skin!
+			// First meter is drawn relative to parent skin!
 			//this.xpos = this.parent.config.windowx+this.config.x[0];
 			//this.ypos = this.parent.config.windowy+this.config.y[0];
-			this.xpos = this.config.x[0];
-			this.ypos = this.config.y[0];
+			if(this.xpos==-1) this.xpos = this.config.x[0];
+			if(this.ypos==-1) this.ypos = this.config.y[0];
+        } else {
+			console.log( ".Using Previous_Meter "+ Previous_Meter.name);
+			if(this.xpos==-1) {
+                // Draw relative to Previous_Meter
+                switch( this.config.x[1] ){
+                case 'r':	//Relative to left of Previous_Meter
+                    this.xpos = Previous_Meter.xpos+this.config.x[0];			
+                    break;
+                case 'R':	//Relative to right of Previous_Meter
+                    this.xpos = Previous_Meter.xpos+Previous_Meter.width+this.config.x[0];
+                    break;
+                default:
+                    //this.xpos = this.parent.config.windowx+this.config.x[0];
+                    this.xpos = this.config.x[0];
+                };
+            };
+			if(this.ypos==-1) {
+                //console.log( ". X="+this.xpos+","+this.config.x );
+                switch( this.config.y[1]){
+                case 'r':	//Relative to left of Previous_Meter
+                    this.ypos = Previous_Meter.ypos+this.config.y[0];			
+                    break;
+                case 'R':	//Relative to right of Previous_Meter
+                    this.ypos = Previous_Meter.ypos+Previous_Meter.height+this.config.y[0];
+                    break;
+                default:
+                    //this.ypos = this.parent.config.windowy+this.config.y[0];
+                    this.ypos = this.config.y[0];
+                }
+            };
+//			this.width = 10;
+//			this.height = 10;
 		}
         
-        // Get size including padding...
-		this.width = this.dom.clientWidth;
-		this.height = this.dom.clientHeight;
-		this.width += this.config.padding.left+this.config.padding.right;
-		this.height += this.config.padding.top+this.config.padding.bottom; 
-        
-        // Save the location into 'Previous_Meter'
-		Previous_Meter = {x:this.xpos,y:this.ypos,w:this.width||0,h:this.height||0};
 		// Update DOM
 		this.dom.style.left = this.xpos+"px";
 		this.dom.style.top = this.ypos+"px";
@@ -191,24 +181,17 @@ class Meter {
 		this.dom.style.paddingBottom = this.config.padding.bottom+"px";
 		this.dom.style.paddingLeft = this.config.padding.left+"px";
         
+        // Get size including padding...
+		this.width = this.dom.offsetWidth;
+		this.height = this.dom.offsetHeight;
+		this.width += this.config.padding.left+this.config.padding.right;
+		this.height += this.config.padding.top+this.config.padding.bottom;
+        
+        // Save the location into 'Previous_Meter'
+		Previous_Meter = this;
+        
         // Set next update duration
-        this.next_update = now+parent.config.update*this.config.updatedivider;
-	}
-}
-
-// An ERROR meter is used when a meter does not load 
-// or loads incorrectly.
-class Meter_Error extends Meter {
-	constructor( parent, name, error ){
-		super( parent, name, {"meter":"error","text":error} );
-		//this.prop = 0;
-        //this.config.text = error;
-	}
-	create(){
-		return document.createElement("div");
-	}
-	Update(){
-        this.dom.innerText=this.config.text;
+        this.next_update = now+this.parent.config.update*this.config.updatedivider;
 	}
 }
 

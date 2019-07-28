@@ -29,7 +29,28 @@
     width:200px;
 }
 
-/*******/
+#skin.samples/test {
+  background-color:#ff0000;
+}
+#"skin.samples/sample image" {
+  background-color:#ff0000;
+}
+
+/*
+ * HTML 404 Error
+ *
+ */
+#html404 {
+    background:#ffffff;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    min-height: 100vh;
+    font-weight:bold;
+    color:#ff0000;
+}
 
 .error {
     border:#ff0000 thin solid;
