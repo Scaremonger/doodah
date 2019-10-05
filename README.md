@@ -30,6 +30,11 @@ python3 doodah.py
 RUNNING AS A SERVICE
 --------------------
 tbc
+Linux:
+    sudo ~/doodah/bin/doodah.service /etc/systemd/system/
+    sudo chmod u+rwx /etc/systemd/system/homescan.service
+    sudo systemctl enable doodah
+    sudo systemctl start doodah
 
 WEB INTERFACE
 -------------
