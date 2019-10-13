@@ -1,0 +1,15 @@
+[Unit]
+Description=Doodah Server
+After=multi-user.target
+
+[Service]
+Type=simple
+WorkingDirectory=~/doodah/doodah/
+ExecStart=~/doodah/venv/bin/python3 doodah.py
+Restart=on-abort
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=Doodah
+
+[Install]
+WantedBy=multi-user.target

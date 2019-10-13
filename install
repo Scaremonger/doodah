@@ -1,0 +1,7 @@
+#!/bin/sh
+
+cp -R ./Skins ~/Skins/
+sudo cp ./doodah/doodah.service /etc/systemd/system/
+sudo chmod u+rwx /etc/systemd/system/doodah.service
+sudo systemctl enable doodah
+sudo systemctl start doodah

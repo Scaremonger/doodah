@@ -92,18 +92,21 @@ class Layout {
             // Request skin configuration from server
             var skin_file = section.replace("\\","/");
             var skin_name = section_lower.replace("\\","/");
+            
+            console.log( "SKIN:::FILE:"+skin_file );
+            console.log( "SKIN:::NAME:"+skin_name );
             //get_skin( parent, skin_file, skin_name, config[section] );
 
             // Create a Debugging card
-            var debug= document.getElementById("debugger");
-            var div= document.createElement('div');
-            div.setAttribute("id", ("card_"+skin_name).replace(/\.|%s|\\/g,"_") );
-            div.className='card';
-            debug.appendChild(div);
-            div.innerText = skin_name;
+            //var debug= document.getElementById("debugger");
+            //var div= document.createElement('div');
+            //div.setAttribute("id", ("card_"+skin_name).replace(/\.|%s|\\/g,"_") );
+            //div.className='card';
+            //debug.appendChild(div);
+            //div.innerText = skin_name;
 
             // Create a new skin
-            var skin = new Skin( skin_name, config[section], this );
+            var skin = new Skin( skin_name, skin_file, config[section], this );
             Skins[ skin_name ] = skin;
 
             // Request the skin content
@@ -115,6 +118,8 @@ class Layout {
         //    this.Update( Date.now() );
 		//}.bind(this),100);      
     }
+    
+    // Request a skin file from the server
     request_skin( skin, skin_file, skin_name, config ) {
         // Create a request
         var server = new XMLHttpRequest();
@@ -124,10 +129,12 @@ class Layout {
         server.skin_name = skin_name;
         server.skin_parent = this;
         //
-        server.open( "GET", "$Skin="+skin_file, true);
+        //server.open( "GET", "$Skin="+skin_file, true);
+        server.open( "GET", skin_file+"/$", true);
         server.onreadystatechange = function() {
             // Wait for Ready State 4:
             if (server.readyState != 4) return;
+            console.log( ".   Server Status: "+server.status );
             switch( server.status ){
             case 0:
                 console.log( "Resource cannot be initialised." );
@@ -192,16 +199,34 @@ class Layout {
                         */
                     }
                 } catch(e) {
+                    
                     console.log( "Failed to parse JSON response: "+e );
                     console.trace();
                 }
                 break;
+            case 404:{
+                // We have requested a missing skin
+                // (Be warned: Skins are case sensitive)
+                // So, now we must create a TEXT error message in it's place
+                ini={
+                    'doodah':{
+                        'skinwidth':150,
+                        'skinheight':40
+                    },
+                    'error':{
+                        'meter':'string',
+                        'text':"Skin '"+skin_name+"' missing"
+                    }
+                };
+                server.skin.initialise( ini );
+                server.skin.dom.classList.add( "error" );
+            }
             default:
                 //console.log( "Status:"+xhttp.status+" ("+xhttp.statusText+")" );
                 //console.log( HTMLProtect(xhttp.responseText) );
             }
         }
-	server.send();
+        server.send();
     
     }
     
@@ -222,10 +247,11 @@ class Layout {
  */
 class Skin {
     // Creates a basic Skin object ready to be loaded from disk
-    constructor( skin_name, layout_config ){
+    constructor( skin_name, skin_path, layout_config ){
         console.log( "  new Skin( '"+skin_name+"' )" );
         
         this.name = skin_name;
+        this.path = skin_path;
         this.config = {};
         this.meters = {};
         this.measures = {};
@@ -254,6 +280,7 @@ class Skin {
         // CREATE DOM OBJECT (DIV) FOR SKIN
 		this.dom = document.createElement('div');
 		this.dom.setAttribute("id", ("skin."+this.name).replace(/\.|%s|\\/g,"_") );
+        this.dom.setAttribute("data-skinname", (this.name) );
 		this.dom.className='skin';
 		document.body.appendChild(this.dom);
         
@@ -264,13 +291,13 @@ class Skin {
         this.dom.appendChild(popup);
         
         // Create Debug "Card"
-        showcard( skin_name, this );
+        //showcard( skin_name, this );
         // Parse the SKIN Config
     }
     
     // Initislise skin with content configuration file
     initialise( skin_config ) {
-        //console.log("  Loading skin config");
+        console.log("  Loading skin config");
         //console.log(skin_config);
         for (var section in skin_config ){
             console.log( "  SECTION: "+section);
@@ -488,7 +515,7 @@ class Skin {
         console.log( "  SKIN SIZE: X="+this.xpos+", Y="+this.ypos+", W="+this.width+", H="+this.height );
         
         // 
-        showcard( this.name, this );
+        //showcard( this.name, this );
         
         // Next update
         this.next_update = now+this.config.update;
@@ -595,10 +622,12 @@ function ExtractColor( definition, variable, otherwise ){
 }
 
 // ========================================
+// Version 1.1
 function get_layout(name) {
     var doodah_server = new XMLHttpRequest();
 	doodah_server.layout_name = name;
-	doodah_server.open( "GET", "$Layout="+name, true);
+	//doodah_server.open( "GET", "$Layout="+name, true);
+    doodah_server.open( "GET", name+"/$", true);
     doodah_server.onreadystatechange = function() {
         xhttp = this;
         if (xhttp.readyState == 4) {
@@ -701,13 +730,18 @@ function dumpvar( obj, depth=0) {
         }
         switch( typeof obj[item] ){
         case "string":
-            html += indent+item+":STR="+obj[item]+"<br>";
+            html += indent+item+"$="+obj[item]+"<br>";
             break;
         case "number":
-            html += indent+item+":NUM="+obj[item].toString()+"<br>";
+            html += indent+item+"%="+obj[item].toString()+"<br>";
             break;
         case "object":
-            html += indent+item+"("+Object.keys( obj[item] ).length+"): {<br>";
+            if( depth==0 ){
+                html += indent+item.toUpperCase();
+            } else {
+                html += indent+item;
+            }
+            html += " ("+Object.keys( obj[item] ).length+"): {<br>";
             html += dumpvar( obj[item], depth+1 );
             html += indent+"}<br>";
             break;
@@ -729,11 +763,11 @@ function dumpvar( obj, depth=0) {
     return html;
 }
 
-function showcard( skin_name, obj ){
-    var div= document.getElementById("card_"+skin_name);
-    var html = dumpvar( obj );
-    div.innerHTML="<pre>"+html+"</pre>";
-}
+//function showcard( skin_name, obj ){
+//    var div= document.getElementById("card_"+skin_name);
+//    var html = dumpvar( obj );
+//    div.innerHTML="<pre>"+html+"</pre>";
+//}
 
 // Start the launcher
 // Loop through all skins, create them as objects
@@ -744,6 +778,19 @@ window.onload = function(){
     if( !layout||layout=='' ) layout='Default';
     console.log( "Layout '"+layout+ "' Selected" );
     get_layout( layout );
+    
+    // Add mouseover skin debugger
+    document.onmouseover=function(e){
+        var e = e || window.event
+        var element = e.target || e.srcElement;
+        if( element.classList.contains("skin")) {
+            name = element.getAttribute("data-skinname");
+            var html = dumpvar( Skins[name] );
+            var div= document.getElementById("debugger");
+            div.innerHTML="<pre>"+html+"</pre>";
+        }
+    };
+
     
 }
 

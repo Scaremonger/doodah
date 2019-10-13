@@ -30,17 +30,65 @@ import traceback
 # DELETE /api/items/123	Delete an item
 
 #!flask/bin/python
+import re
 from flask import Flask, jsonify, abort
 from flask import request, make_response, url_for
-from flask import render_template
+from flask import render_template, send_from_directory
 ##from flask_httpauth import HTTPBasicAuth
 from pathlib import Path
 
 logger = logging.getLogger("Doodah")
 app = Flask(__name__, static_folder='web', template_folder='web')
 ##auth = HTTPBasicAuth()
-home = str(Path.home())
+##home = str(Path.home())
 
+# CONFIGURATION FILE
+
+class Variables:
+    
+    def __init__( self, filename ):
+        config = configparser.ConfigParser()
+        self.config = config.read( filename )
+        self.V = {}
+        self.V['RootPath']=self.readconfig( 'doodah', 'RootPath', '~/Skins/' )
+        self.V['DefaultPath']=self.readconfig( 'doodah', 'DefaultPath', '{RootPath}\Default' )
+        self.V['Port']=self.readconfig( 'doodah', 'Port', '5555' )
+        # Strip Trailing "/" on Paths
+        self.V['RootPath']=self.V['RootPath'].replace('\\',"/")
+        self.V['DefaultPath']=self.V['DefaultPath'].replace('\\',"/")
+        if self.V['RootPath'].endswith("/"):
+            self.V['RootPath']=self.V['RootPath'][:-1]
+        if self.V['DefaultPath'].endswith("/"):
+            self.V['DefaultPath']=self.V['DefaultPath'][:-1]
+        # Expand home folder "tilde"
+        self.V['RootPath'] = os.path.expanduser( self.V['RootPath'] )
+        self.V['DefaultPath'] = os.path.expanduser( self.V['DefaultPath'] )
+    def readconfig( self, section, key, default="" ):
+        if not section in self.config: return default
+        if not key in self.config[section]: return default
+        return self.config[section][key]
+
+    def get( self, name, default='' ):
+        if name in self.V:
+            return self.expand( self.V[name] )
+        return default
+    
+    def expand( self, value ):
+        result = value
+        #while True:
+        matches = re.findall( '\{(.*)\}', result ) 
+        for match in matches:
+            print("-Match:"+match)
+            insert = self.V[match] if match in self.V else ''
+            result = result.replace("{"+match+"}",insert)
+        return result
+    
+cfg = Variables( '../doodah.ini' )
+
+#print( "RootPath: "+cfg.get("RootPath") )
+#print( "DefaultPath: "+cfg.get("DefaultPath") )
+
+'''
 ## Webservice for LAYOUT
 @app.route('/$Layout=<layout>')
 def get_layout(layout):
@@ -99,7 +147,8 @@ def get_skin(path):
             print( sys.exc_info()[0]);
             response = jsonify( { 'response':'skin','name':config_name,'status':'fail','ini':'' } )
     return response
-    
+'''
+
 ## Serve the default skin
 @app.route('/')
 def root(): 
@@ -112,18 +161,116 @@ def favicon():
     return app.send_static_file('favicon.ico')
     ##return serve_page( filename )
 
-## Serve Doodah Javascript
-@app.route('/js/<path:path>')
-def js(path):
+## Serve Doodah Static file
+@app.route('/$/<path:path>')
+def sysfile(path):
     return app.send_static_file(path)
     ##return app.send_from_directory('js', path)
     ##send_static_file("js/"+path+)
 
 ## Serve Doodah Stylesheets
-@app.route('/css/<path:path>')
-def css(path):
-    return app.send_static_file(path)
+#@app.route('/css/<path:path>')
+#def css(path):
+#    return app.send_static_file(path)
 
+## Webservice for LAYOUT
+@app.route('/<string:layout>')
+def getLayout(layout):
+    print( "Send Layout html: "+layout )
+    return render_template('doodah.html', title=layout, preload='')   
+
+@app.route('/<string:layout>/$')
+def getLayoutDefinition(layout):
+    print( "WEBSERVICE: get_layout( "+layout+" )" )
+    ## Retrieve file and send it to client
+    ##filepath = Path( home+"/doodah/"+layout+".ini" )
+    filepath = Path( cfg.get( "RootPath" )+"/"+layout+".ini" )
+    print( "SERVING LAYOUT:", filepath )
+    if not filepath.is_file():
+        abort(404)
+    with open(filepath, 'r', encoding="utf-8") as file:
+        try:
+            content = file.read()
+            response = jsonify( { 'response':'layout','name':layout,'status':'ok','ini':content } )
+        except UnicodeDecodeError:
+            response = jsonify( { 'response':'layout','name':layout,'status':'UnicodeDecodeError','ini':'' } )
+        except Exception as e:
+            response = jsonify( { 'response':'layout','name':layout,'status':e,'ini':'' } )
+        except:
+            print( sys.exc_info()[0]);
+            response = jsonify( { 'response':'layout','name':layout,'status':'fail','ini':'' } )
+    return response
+
+@app.route('/<string:layout>/<string:filename>.<string:extension>')
+def getLayoutFile(layout,filename,extension):
+    print( "Send Layout file: "+layout+"/"+filename+"."+extension )
+    filepath = cfg.expand( "{RootPath}/"+layout )
+    filepath = Path( filepath )
+    print( "-"+str(filepath) )
+    if not filepath.is_file():
+        abort(404)
+    try:
+        return send_from_directory( filepath, filename+"."+extension )
+    except FileNotFoundError:
+        abort(404)
+
+## Webservice for SKIN
+@app.route('/<string:suite>/<string:skin>/$')
+def getSkinDefinition(suite,skin):
+    print( "Send Skin definition: "+suite+"."+skin )
+    ##print( "WEBSERVICE: get_skin( "+path+" )" )
+    ## Extract Name from Config Name:
+    ##suite = path.replace("\\","/")
+    ##print("["+suite+"]")
+    ##print(os.path.split(suite))
+    ##print(os.path.basename(suite))
+    ##print(suite.split("/"))
+    ##skin_path=os.path.split(suite)
+    ##if skin_path[0]==os.path.basename(suite):
+    ##    config_name=skin_path[0]
+    ##    skin_file=skin_path[0]
+    ##else:
+    ##    config_name=skin_path[0]+"/"+skin_path[1]
+    config_name=suite+"/"+skin
+    ##    skin_file=skin_path[1]
+    ##print( config_name )
+    ## Retrieve file and send it to client
+    ##filepath = Path( home+"/doodah/"+config_name+"/"+skin_file+".ini" )
+    filepath = Path( cfg.get( "RootPath" )+"/"+config_name+"/"+skin+".ini" )
+    #filepath = Path( home+"/doodah/"+config_name+"/skin.ini" )
+    print( "SERVING SKIN:", filepath )
+    if not filepath.is_file():
+        abort(404)
+    with open(filepath, 'r', encoding="utf-8") as file:
+        ##content = file.read()
+        try:
+            content = file.read()
+            response = jsonify( { 'response':'skin','name':config_name,'status':'ok','ini':content } )
+        except UnicodeDecodeError:
+            response = jsonify( { 'response':'skin','name':config_name,'status':'UnicodeDecodeError','ini':'' } )
+        except Exception as e:
+            response = jsonify( { 'response':'skin','name':config_name,'status':e,'ini':'' } )
+        except:
+            print( sys.exc_info()[0]);
+            response = jsonify( { 'response':'skin','name':config_name,'status':'fail','ini':'' } )
+    return response
+
+
+@app.route('/<string:suite>/<string:skin>/<string:filename>.<string:extension>')
+def getSkinFile(suite,skin,filename,extension):
+    print( "Send Skin file: "+suite+"/"+skin+"/"+filename+"."+extension )
+    folder   = cfg.expand( "{RootPath}/"+suite+"/"+skin+"/" )
+    folderpath = Path( folder )
+    filepath = Path( folder+filename+"."+extension )
+    print( "-"+str(folderpath) )
+    if not filepath.is_file():
+        abort(404)
+    try:
+        return send_from_directory( folderpath, filename+"."+extension )
+    except FileNotFoundError:
+        abort(404)
+
+'''
 ## Serve optional skins (THIS MUST BE LAST ROUTE)
 ## Catches all other submissions
 @app.route('/<path:filename>')
@@ -136,7 +283,6 @@ def specific(filename):
 ##def sendfile(path):
 ##    return app.send_static_file('index.html')
 
-
 ##@auth.get_password
 def get_password(username):
     if username == 'miguel':
@@ -147,7 +293,7 @@ def get_password(username):
 def unauthorized():
     return make_response(jsonify( { 'error': 'Unauthorized access' } ), 403)
     # return 403 instead of 401 to prevent browsers from displaying the default auth dialog
-    
+
 ##@app.errorhandler(400)
 ##def not_found(error):
 ##    return make_response(jsonify( { 'error': 'Bad request' } ), 400)
@@ -167,7 +313,7 @@ def serve_layout( name ):
     #reformat_preload(preload))
     ##preload=json.dumps(skins))
     ## dict = json.loads(input)
-    
+
 ## Serve Skin Resources **
 @app.route('/inc/<path:skin>/<filename>')
 def serve_resource(skin,filename):
@@ -264,6 +410,7 @@ def delete_task(task_id):
     tasks.remove(task[0])
     return jsonify( { 'result': True } )
 """
+'''
 
 if __name__ == '__main__':
     if "DEBUG" in os.environ:
@@ -271,7 +418,8 @@ if __name__ == '__main__':
     else:
         logging.basicConfig(level=logging.INFO)
     try:
-        app.run(debug = True)
+        port = cfg.get( 'Port' )
+        app.run(debug = True, port=int(port))
     except Exception:
         traceback.print_exc(file=sys.stdout)
         sys.exit(1)

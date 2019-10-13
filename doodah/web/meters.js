@@ -40,9 +40,18 @@ function CreateMeter( meter_name, meter_config, parent ){
     var meter;
     switch( metertype ){
     case 'string':
-        console.log("Creating string meter");
+        console.log("Creating STRING meter");
         // Add a new Meter to the list
         var meter = new Meter_String( parent, meter_name, meter_config );
+        if( !meter ) return;
+        console.log("  Meter created");
+        //parent.meters[meter_name] = meter;
+        return meter;
+        break;
+    case 'image':
+        console.log("Creating IMAGE meter");
+        // Add a new Meter to the list
+        var meter = new Meter_Image( parent, meter_name, meter_config );
         if( !meter ) return;
         console.log("  Meter created");
         //parent.meters[meter_name] = meter;
@@ -51,7 +60,10 @@ function CreateMeter( meter_name, meter_config, parent ){
     default:
         // Unknown Meter Type, so create a STRING meter to show an error instead.
         console.log("# Unknown meter type "+metertype);
-        //var meter = new Meter_Error( parent, meter_name, "<br>Invalid meter type '"+metertype+"' in meter '"+meter_name+"'" );
+        Error_Meter= { meter:"string",text:"Invalid meter type '"+metertype+"'" }
+        var meter = new Meter_String( parent, meter_name, Error_Meter );
+        if( !meter ) return;
+        console.log("  Meter created");
         /*
          * var config = ERROR_METER;
         config.name = meter_name;
@@ -78,7 +90,8 @@ class Meter {
         this.next_update=0;
         
 		// Create DOM element
-		this.dom = document.createElement('div');
+		this.dom = this.create();
+        //this.dom = document.createElement('div');
 		this.dom.setAttribute("id", parent.name+"."+this.name);
 		this.dom.className='meter meter'+this.metertype;
 		//if( visible==0 ) this.div.style.display = "none";
@@ -127,6 +140,13 @@ class Meter {
 		//this.period = 1000;
 		//if(this.prop < 10) setTimeout(this.update.bind(this), this.period);
 	}
+	
+	// Create the default object type "div"
+	create() {
+        //console.log( "SS DEFAULT DOM TYPE $$" );
+        return document.createElement('div');
+    }
+    
     // Update the meter (With new value if required)
     // This is called by timer
 	update(now){
@@ -200,34 +220,47 @@ class Meter_Bar extends Meter {
 		super();
 		//this.prop = 0;
 	}
-	create(){
-		return document.createElement("canvas");
-	}
+//	create(){
+//		return document.createElement("canvas");
+//	}
 	Update(){
 	}
 }
 
+//THE PROBLEM:
+//Parent.name is lowercase, needs to be physical case...
+
+
 class Meter_Image extends Meter {
-	constructor(){
-		super();
-		//this.prop = 0;
+	constructor( parent, name, definition ){
+		super( parent, name, definition );
+        //
+        this.config.imagename = ExtractText( definition, 'imagename', '' );
+        if( this.config.imagename=='' ) {
+            this.config.imagename='/$/missing.png';
+        } else {
+            this.config.imagename=parent.path+"/"+this.config.imagename;
+        }
+        this.dom.src=this.config.imagename;
 	}
-	create(){
-		return document.createElement("img");
-	}
+
+	// Create an image object
+	create() {
+        //console.log( "SS IMAGE $$" );
+        return document.createElement('img');
+    }
+
 	Update(){
+        //this.dom.src=this.config.imagename;
+        //console.log( "UPDATING IMAGE" );
+        //this.dom.innerHTML="<h1>Boo</h1>";
+        //this.dom.innerText="BOO";
 	}
 }
 
 class Meter_String extends Meter {
 	constructor( parent, name, definition ){
 		super( parent, name, definition );
-//		this.prop = 0;
-		
-
-		//console.log("-> w="+this.dom.clientWidth);
-		//console.log("-> h="+this.dom.clientHeight);
-
 	}
 	Update(){
         //this.dom.innerText="###"+name+"###";

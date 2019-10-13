@@ -13,20 +13,13 @@
 /* SYSTEM DEBUGGER - NOT USED IN PRODUCTION */
 #debugger {
     position:absolute;
-    bottom:0;
-    left:0;
-    width:100%;
-}
-.card {
-    border:#00007f thin solid;
-    color:#00007f;
-    float:left;
-    font-size:8pt;
-    padding:3px;
-    margin:5px;
-    height:400px;
-    overflow:auto;
+    top:0;
+    right:0;
+    height:100%;
     width:200px;
+    background-color:#e6e6fa;
+    font-size:8pt;
+    padding:5px;
 }
 
 #skin.samples/test {
@@ -53,9 +46,18 @@
 }
 
 .error {
+    /*
     border:#ff0000 thin solid;
     color:#ff0000;
     text-align:center;
+    */
+}
+.skin.error .meter {
+    background-color:#ff0000;
+    border:none;
+    text-align:center;
+    color:#ffffff;
+    padding:3px;
 }
 .hidden{
     visibility: hidden;
@@ -117,7 +119,7 @@
 	display:inline-block;
 	
 }
-.meterString, .metererror {
+.meterString, .metererror, .meterimage {
     /* Remove gap below element */
 	vertical-align:top;
     overflow: hidden;

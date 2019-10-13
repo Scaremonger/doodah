@@ -1,4 +1,13 @@
 BUGS:
+* Test missing.png
+* Images are displayed full size and not size of container.
+* img meter skin does not resize around the image!
+
+THESE ARE REDUNDANT:
+    @app.route('/$Layout=<layout>')
+    @app.route('/$Skin=<skin>')
+REMOVE THEM FROM JS AND REPLACE IN PYTHON
+
 * When skin does not exist, create one anyway of type "missing skin"
     Use location from layout file and size if known
     Must be generated, Not a physical skin
@@ -10,9 +19,14 @@ BUGS:
     Invalid skins should create a error skin with the error message
 * Requests for Skins/Layouts containing spaces adds a %20 into the URL which is not removed.
 * Requests for skins are lowercase
+
   
 IMPROVEMENTS
+------------
 * Get version number from setup file instead of hard coding
+* favicon.ico - If it exists, use the one in layout folder
+* Check if skin file or layout file actually exists before retruning 404
+    (Return an empty file in it's place)
 
 THINGS TO DO:
 * finish:
@@ -36,3 +50,8 @@ START THE UPDATE CYCLE
     This will update DOM objects contents and size
 * Update All DOM objects positions 
     Because they are based on size of previous etc.
+
+VARIABLE REFERENCE
+------------------
+SKIN.skin_file      REAL FOLDER NAME
+SKIN.skin_name      REAL FOLDER NAME
